@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    .header {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 4px;
+      background: #e8f5e9;
+      color: #2e7d32;
+      font-weight: bold;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.2em;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
+    }
+
+    .btn-video {
+      background-color: #d32f2f;
+      color: white;
+    }
+
+    /* 動画は赤系で視覚的に誘導 */
+    .btn-manual {
+      background-color: #1976d2;
+      color: white;
+    }
+
+    /* マニュアルは青系 */
+    .btn-action {
+      background-color: #f57c00;
+      color: white;
+      margin-top: 30px;
+    }
+
+    .history-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .history-item {
+      border-bottom: 1px solid #eee;
+      padding: 10px 0;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+
+<body>
+  <? if (itemId) { ?>
+  <div id="loading">データ読み込み中...</div>
+  <div id="content" style="display: none;">
+    <div class="card">
+      <div class="header" id="itemName"></div>
+      <div class="status" id="itemStatus"></div>
+      <p style="margin-top: 10px; font-size: 0.9em; color: #555;">
+        部署: <span id="itemDepartment"></span><br>
+        購入日: <span id="itemPurchaseDate"></span>
+      </p>
+    </div>
+
+    <a href="#" id="manualBtn" class="btn btn-manual" target="_blank">📘 PDFマニュアル</a>
+
+    <div class="card">
+      <h3 style="margin-top:0;">履歴</h3>
+      <ul class="history-list" id="historyList"></ul>
+    </div>
+
+    <div id="actionSection" style="margin-top: 30px;">
+      <button class="btn btn-action" onclick="showForm()">🔧 点検・修理を報告する</button>
+    </div>
+
+    <!-- 報告フォーム (初期は非表示) -->
+    <div id="reportForm" class="card" style="display: none; border: 2px solid #f57c00;">
+      <h3 style="margin-top:0;">報告フォーム</h3>
+      <div style="margin-bottom:15px;">
+        <label style="display:block; font-size:0.9em; margin-bottom:5px;">内容</label>
+        <select id="formContent" style="width:100%; padding:10px; font-size:1em;">
+          <option value="定期点検">定期点検</option>
+          <option value="清掃・除菌">清掃・除菌</option>
+          <option value="不具合・修理">不具合・修理</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+      <div style="margin-bottom:15px;">
+        <label style="display:block; font-size:0.9em; margin-bottom:5px;">ステータス</label>
+        <select id="formStatus" style="width:100%; padding:10px; font-size:1em;">
+          <option value="使用可能">✅ 使用可能（問題なし）</option>
+          <option value="要修理">⚠️ 要修理・点検が必要</option>
+          <option value="使用不可">❌ 修理中・使用不可</option>
+        </select>
+      </div>
+      <div style="margin-bottom:15px;">
+        <label style="display:block; font-size:0.9em; margin-bottom:5px;">担当者名</label>
+        <input type="text" id="formUser" placeholder="お名前を入力" style="width:100%; padding:10px; font-size:1em; box-sizing:border-box;">
+      </div>
+      <button class="btn btn-action" id="submitBtn" onclick="submitReport()" style="margin-top:10px;">送信する</button>
+      <button class="btn" onclick="hideForm()" style="background:#eee; color:#333; font-size:1em;">キャンセル</button>
+    </div>
+  </div>
+
+  <script>
+    var currentData = null;
+
+    function showForm() {
+      document.getElementById('actionSection').style.display = 'none';
+      document.getElementById('reportForm').style.display = 'block';
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function hideForm() {
+      document.getElementById('actionSection').style.display = 'block';
+      document.getElementById('reportForm').style.display = 'none';
+    }
+
+    function submitReport() {
+      var content = document.getElementById('formContent').value;
+      var status = document.getElementById('formStatus').value;
+      var user = document.getElementById('formUser').value;
+
+      if (!user) {
+        alert('担当者名を入力してください');
+        return;
+      }
+
+      document.getElementById('submitBtn').disabled = true;
+      document.getElementById('submitBtn').innerText = '送信中...';
+
+      google.script.run.withSuccessHandler(function (res) {
+        alert('報告が完了しました！');
+        // 白い画面を防ぐため、フルリロードはせず、データを再取得して表示を更新する
+        hideForm();
+        loadData(); // データを再取得する関数を呼び出し
+      }).registerReport({
+        itemId: '<?= itemId ?>',
+        content: content,
+        status: status,
+        user: user
+      });
+    }
+
+    // データを取得・表示する処理を関数化
+    function loadData() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('content').style.display = 'none';
+
+      google.script.run.withSuccessHandler(function (data) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+
+        if (data) {
+          currentData = data;
+          document.getElementById('itemName').innerText = data.name + ' (' + data.id + ')';
+          document.getElementById('itemStatus').innerText = '✅ ' + data.status + ' (最終点検: ' + data.lastInspection + ')';
+          document.getElementById('itemDepartment').innerText = data.department;
+          document.getElementById('itemPurchaseDate').innerText = data.purchaseDate;
+          document.getElementById('manualBtn').href = data.manualUrl;
+
+          var historyHtml = '';
+          data.history.forEach(function (h) {
+            historyHtml += '<li class="history-item"><strong>' + h.date + '</strong> : ' + h.content + ' (' + h.user + ')</li>';
+          });
+          document.getElementById('historyList').innerHTML = historyHtml;
+        } else {
+          document.getElementById('content').innerHTML = '<div class="card"><p>備品データが見つかりません。ID: <?= itemId ?> がマスタに登録されているか確認してください。</p></div>';
+        }
+      }).getItemData('<?= itemId ?>');
+    }
+
+    // 初回読み込み
+    loadData();
+  </script>
+  <? } else { ?>
+  <div class="card">
+    <p>エラー: 備品IDが指定されていません。正しいQRコードからアクセスしてください。</p>
+  </div>
+  <? } ?>
+</body>
+
+</html>
