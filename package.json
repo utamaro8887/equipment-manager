@@ -13,5 +13,13 @@
   "devDependencies": {
     "@google/clasp": "^3.3.0",
     "@types/google-apps-script": "^2.0.8"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/utamaro8887/equipment-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/utamaro8887/equipment-manager/issues"
+  },
+  "homepage": "https://github.com/utamaro8887/equipment-manager#readme"
 }

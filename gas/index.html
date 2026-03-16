@@ -1,212 +1,647 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="ja">
 <head>
-  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>病院備品管理システム</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-
-    .card {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      margin-bottom: 20px;
-    }
-
-    .header {
-      font-size: 1.5em;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-
-    .status {
-      display: inline-block;
-      padding: 5px 10px;
-      border-radius: 4px;
-      background: #e8f5e9;
-      color: #2e7d32;
-      font-weight: bold;
-    }
-
-    .btn {
-      display: block;
-      width: 100%;
-      padding: 15px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 8px;
-      font-size: 1.2em;
-      cursor: pointer;
-      text-align: center;
-      text-decoration: none;
-      box-sizing: border-box;
-    }
-
-    .btn-video {
-      background-color: #d32f2f;
-      color: white;
-    }
-
-    /* 動画は赤系で視覚的に誘導 */
-    .btn-manual {
-      background-color: #1976d2;
-      color: white;
-    }
-
-    /* マニュアルは青系 */
-    .btn-action {
-      background-color: #f57c00;
-      color: white;
-      margin-top: 30px;
-    }
-
-    .history-list {
-      list-style: none;
-      padding: 0;
-    }
-
-    .history-item {
-      border-bottom: 1px solid #eee;
-      padding: 10px 0;
-      font-size: 0.9em;
-    }
+    body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    
+    /* ローディングオーバーレイ */
+    #loading-view { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 2000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    
+    /* リストビュー */
+    .status-badge { padding: 5px 10px; border-radius: 12px; font-weight: bold; font-size: 0.8rem; }
+    .bg-active { background-color: #e7f5ff; color: #007bff; }
+    .bg-faulty { background-color: #fff5f5; color: #fa5252; }
+    .bg-spare { background-color: #fef9e7; color: #f1c40f; }
+    .bg-disposed { background-color: #f1f3f5; color: #868e96; }
+    .asset-list-card { border-radius: 10px; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.2s; cursor: pointer; }
+    .asset-list-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    
+    /* フォームビュー */
+    .form-card { border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; }
+    .action-btn { border-radius: 10px; font-weight: bold; }
+    .timeline { position: relative; padding-left: 30px; }
+    .timeline::before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0; width: 2px; background: #e9ecef; }
+    .timeline-item { position: relative; margin-bottom: 20px; }
+    .timeline-marker { position: absolute; left: -22px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: #007bff; border: 2px solid #fff; }
+    
+    /* 非表示用クラス */
+    .d-none-custom { display: none !important; }
   </style>
 </head>
-
 <body>
-  <? if (itemId) { ?>
-  <div id="loading">データ読み込み中...</div>
-  <div id="content" style="display: none;">
-    <div class="card">
-      <div class="header" id="itemName"></div>
-      <div class="status" id="itemStatus"></div>
-      <p style="margin-top: 10px; font-size: 0.9em; color: #555;">
-        部署: <span id="itemDepartment"></span><br>
-        購入日: <span id="itemPurchaseDate"></span>
-      </p>
-    </div>
 
-    <a href="#" id="manualBtn" class="btn btn-manual" target="_blank">📘 PDFマニュアル</a>
+  <!-- LOADING VIEW -->
+  <div id="loading-view">
+    <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+    <div class="text-muted fw-bold">通信中...</div>
+  </div>
 
-    <div class="card">
-      <h3 style="margin-top:0;">履歴</h3>
-      <ul class="history-list" id="historyList"></ul>
-    </div>
-
-    <div id="actionSection" style="margin-top: 30px;">
-      <button class="btn btn-action" onclick="showForm()">🔧 点検・修理を報告する</button>
-    </div>
-
-    <!-- 報告フォーム (初期は非表示) -->
-    <div id="reportForm" class="card" style="display: none; border: 2px solid #f57c00;">
-      <h3 style="margin-top:0;">報告フォーム</h3>
-      <div style="margin-bottom:15px;">
-        <label style="display:block; font-size:0.9em; margin-bottom:5px;">内容</label>
-        <select id="formContent" style="width:100%; padding:10px; font-size:1em;">
-          <option value="定期点検">定期点検</option>
-          <option value="清掃・除菌">清掃・除菌</option>
-          <option value="不具合・修理">不具合・修理</option>
-          <option value="その他">その他</option>
-        </select>
-      </div>
-      <div style="margin-bottom:15px;">
-        <label style="display:block; font-size:0.9em; margin-bottom:5px;">ステータス</label>
-        <select id="formStatus" style="width:100%; padding:10px; font-size:1em;">
-          <option value="使用可能">✅ 使用可能（問題なし）</option>
-          <option value="要修理">⚠️ 要修理・点検が必要</option>
-          <option value="使用不可">❌ 修理中・使用不可</option>
-        </select>
-      </div>
-      <div style="margin-bottom:15px;">
-        <label style="display:block; font-size:0.9em; margin-bottom:5px;">担当者名</label>
-        <input type="text" id="formUser" placeholder="お名前を入力" style="width:100%; padding:10px; font-size:1em; box-sizing:border-box;">
-      </div>
-      <button class="btn btn-action" id="submitBtn" onclick="submitReport()" style="margin-top:10px;">送信する</button>
-      <button class="btn" onclick="hideForm()" style="background:#eee; color:#333; font-size:1em;">キャンセル</button>
+  <!-- ERROR ALERT -->
+  <div id="error-alert" class="container mt-3 d-none-custom">
+    <div class="alert alert-danger shadow-sm alert-dismissible fade show" role="alert">
+      <span id="error-message"></span>
+      <button type="button" class="btn-close" onclick="document.getElementById('error-alert').classList.add('d-none-custom')"></button>
     </div>
   </div>
 
+  <!-- LIST VIEW -->
+  <div id="list-view" class="container py-4 pb-5 d-none-custom">
+    <div class="d-flex justify-content-between align-items-center mb-4 sticky-top bg-light py-2" style="z-index: 1000;">
+      <h2 class="h4 mb-0 fw-bold text-primary"><i class="bi bi-box-seam me-2"></i>備品台帳</h2>
+      <button class="btn btn-primary shadow-sm rounded-pill px-3" onclick="openNewForm()">
+        <i class="bi bi-plus-lg me-1"></i>新規登録
+      </button>
+    </div>
+
+    <!-- 検索フィルター -->
+    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+      <div class="card-body p-2 px-3">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-0"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" id="searchInput" class="form-control border-0 shadow-none ps-0" placeholder="名称、管理番号で探す..." onkeyup="filterList()">
+        </div>
+      </div>
+    </div>
+
+    <div id="listContainer" class="row g-3">
+      <!-- 備品カードが動的に追加されます -->
+    </div>
+    <div id="noResult" class="text-center text-muted mt-5 d-none-custom">
+      <i class="bi bi-folder-x fs-1 d-block mb-3"></i>
+      一致する備品が見つかりません。
+    </div>
+  </div>
+
+
+  <!-- FORM VIEW (単票フォーム) -->
+  <div id="form-view" class="container py-4 pb-5 d-none-custom">
+    <div class="d-flex align-items-center mb-4 sticky-top bg-light py-2" style="z-index: 1000;">
+      <button class="btn btn-sm btn-outline-secondary rounded-circle me-3" style="width: 36px; height:36px;" onclick="showList()">
+        <i class="bi bi-arrow-left"></i>
+      </button>
+      <h2 class="h4 mb-0 fw-bold" id="formTitle">備品詳細</h2>
+      
+      <!-- 既存データ時のみ表示される更新・報告ボタン等 -->
+      <div class="ms-auto" id="editActions" style="display:none;">
+        <button class="btn btn-sm btn-success shadow-sm me-2" onclick="saveAsset()">
+          <i class="bi bi-save me-1"></i>保存
+        </button>
+        <button class="btn btn-sm btn-warning shadow-sm text-dark" onclick="openReportModal()">
+          <i class="bi bi-flag me-1"></i>報告
+        </button>
+      </div>
+    </div>
+
+    <div class="card form-card p-4">
+      <form id="assetForm">
+        <!-- 内部ID保持用 -->
+        <input type="hidden" id="assetId">
+        <input type="hidden" id="qrToken">
+
+        <!-- ステータス表示（既存専用） -->
+        <div id="statusHeader" class="mb-4 d-flex justify-content-between align-items-center" style="display:none;">
+          <span class="text-muted small fw-bold">現在のステータス</span>
+          <select class="form-select form-select-sm w-auto fw-bold" id="f_status">
+            <option value="稼働中">稼働中</option>
+            <option value="予備">予備</option>
+            <option value="故障中">故障中</option>
+            <option value="廃棄待">廃棄待</option>
+            <option value="廃棄済">廃棄済</option>
+          </select>
+        </div>
+
+        <h5 class="fw-bold mb-3 border-bottom pb-2">基本情報</h5>
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">備品名称 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control fw-bold fs-5 text-primary" id="f_name" required placeholder="例: 車椅子(標準型)">
+        </div>
+        
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-bold text-muted">管理番号 <span class="badge bg-secondary font-monospace ms-1">自動採番</span></label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+              <input type="text" class="form-control text-muted" id="f_asset_tag" placeholder="保存時にカテゴリ＋年月で自動採番されます" disabled>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-bold text-muted">型番・品番</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-upc"></i></span>
+              <input type="text" class="form-control" id="f_model_number" placeholder="例: NA-VD110L">
+            </div>
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-12">
+            <label class="form-label small fw-bold text-muted">カテゴリ</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-tags"></i></span>
+              <input type="text" class="form-control" id="f_category_id" list="catList" required>
+              <datalist id="catList"><option value="車椅子"><option value="ベッド"><option value="点滴台"></datalist>
+            </div>
+          </div>
+        </div>
+
+        <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">配置情報</h5>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label small fw-bold text-muted">管理部署</label>
+            <input type="text" class="form-control" id="f_dept_id">
+          </div>
+          <div class="col-md-2 col-4">
+            <label class="form-label small fw-bold text-muted">設置階</label>
+            <input type="text" class="form-control" id="f_floor" placeholder="3F">
+          </div>
+          <div class="col-md-6 col-8">
+            <label class="form-label small fw-bold text-muted">設置場所</label>
+            <input type="text" class="form-control" id="f_location" placeholder="ナースST">
+          </div>
+        </div>
+
+        <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">資産・管理情報</h5>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4 col-6">
+            <label class="form-label small fw-bold text-muted">購入日</label>
+            <input type="date" class="form-control" id="f_purchase_date">
+          </div>
+          <div class="col-md-4 col-6">
+            <label class="form-label small fw-bold text-muted">購入金額(円)</label>
+            <input type="number" class="form-control" id="f_price">
+          </div>
+          <div class="col-md-4 col-12">
+            <label class="form-label small fw-bold text-muted">耐用年数(年)</label>
+            <input type="number" class="form-control" id="f_useful_life">
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-bold text-muted">購入業者</label>
+            <input type="text" class="form-control" id="f_vendor">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-bold text-muted">修理依頼先</label>
+            <input type="text" class="form-control" id="f_repair_vendor">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <label class="form-label small fw-bold text-muted mb-0">説明書URL</label>
+            <a href="#" id="f_manual_link" class="small d-none-custom" target="_blank"><i class="bi bi-box-arrow-up-right me-1"></i>開く</a>
+          </div>
+          <input type="url" class="form-control" id="f_manual_url" placeholder="https://...">
+        </div>
+        
+        <div class="mb-4">
+          <label class="form-label small fw-bold text-muted">備考・メモ</label>
+          <textarea class="form-control" id="f_note" rows="2"></textarea>
+        </div>
+
+        <div class="bg-light p-3 rounded" id="operatorSection">
+          <label class="form-label small fw-bold text-dark">今回の担当者名 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="f_operator" placeholder="操作者の氏名を入力" required>
+        </div>
+
+        <!-- 新規登録時のみ表示される下部ボタン -->
+        <div class="d-grid mt-4" id="registerAction" style="display:none;">
+          <button type="submit" class="btn btn-primary btn-lg action-btn shadow-sm">
+            <i class="bi bi-cloud-upload me-2"></i>台帳に追加する
+          </button>
+        </div>
+      </form>
+
+      <!-- 履歴セクション (既存データ用) -->
+      <div id="historySection" class="mt-5" style="display:none;">
+        <h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2"></i>メンテナンス履歴</h5>
+        <div class="bg-light p-3 rounded">
+          <div id="historyTimeline" class="timeline">
+            <!-- 履歴がJSで挿入される -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 報告フォーム (モーダル) -->
+  <div class="modal fade" id="reportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="border-radius: 15px;">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold">メンテナンス・移動報告</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="reportForm">
+            <div class="mb-3">
+              <label class="form-label small fw-bold">報告種別</label>
+              <select class="form-select" id="r_type" required>
+                <option value="点検">定期点検</option>
+                <option value="移動">移動（場所変更）</option>
+                <option value="修理">修理・不具合</option>
+                <option value="棚卸">棚卸（所在確認）</option>
+                <option value="廃棄">廃棄</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">現在の状態</label>
+              <select class="form-select" id="r_status" required>
+                <option value="稼働中">✅ 稼働中</option>
+                <option value="予備">📦 予備</option>
+                <option value="故障中">⚠️ 故障中</option>
+                <option value="廃棄待">🕒 廃棄待</option>
+                <option value="廃棄済">🛑 廃棄済</option>
+              </select>
+            </div>
+
+            <div id="r_locationGroup" style="display:none;">
+              <div class="row mb-3">
+                <div class="col-4"><label class="form-label small fw-bold">新しい設置階</label><input type="text" class="form-control" id="r_floor"></div>
+                <div class="col-8"><label class="form-label small fw-bold">新しい設置場所</label><input type="text" class="form-control" id="r_location"></div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">報告メモ</label>
+              <textarea class="form-control" id="r_note" rows="2" placeholder="詳細を入力"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer border-0 pt-0 d-grid">
+          <button type="button" class="btn btn-warning btn-lg action-btn text-dark font-weight-bold" onclick="submitReport()">報告を記録</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    var currentData = null;
+    // --- [ State Management ] ---
+    let allAssets = [];
+    let currentMode = 'list'; // 'list', 'edit', 'new'
+    const reportModal = new bootstrap.Modal(document.getElementById('reportModal'));
 
-    function showForm() {
-      document.getElementById('actionSection').style.display = 'none';
-      document.getElementById('reportForm').style.display = 'block';
-      window.scrollTo(0, document.body.scrollHeight);
+    // --- [ Start Up ] ---
+    const appUrl = '<?= appUrl ?>';
+    
+    window.onload = function() {
+      // Operator自動入力
+      document.getElementById('f_operator').value = localStorage.getItem('lastOperator') || '';
+      
+      const token = '<?= token ?>';
+      const idStr = '<?= id ?>';
+      
+      if (token || idStr) {
+        // 特定の備品データを読み込み、直接単票フォームへ
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function(asset) {
+            if(!asset) {
+              showError('該当する備品が見つかりません。');
+              hideLoading();
+              return;
+            }
+            populateForm(asset);
+            switchView('form');
+            currentMode = 'edit';
+            hideLoading();
+          })
+          .withFailureHandler(handleServerError)
+          .getAssetData(token, idStr);
+      } else {
+        // 指定が無い場合: 全件取得してリストビューへ
+        fetchAllLists();
+      }
+    };
+
+    // --- [ Data Fetching ] ---
+    function fetchAllLists() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(data) {
+          allAssets = data;
+          renderList(allAssets);
+          switchView('list');
+          hideLoading();
+        })
+        .withFailureHandler(handleServerError)
+        .getAssetList();
     }
 
-    function hideForm() {
-      document.getElementById('actionSection').style.display = 'block';
-      document.getElementById('reportForm').style.display = 'none';
+    // --- [ View Routing ] ---
+    function switchView(view) {
+      document.getElementById('list-view').classList.add('d-none-custom');
+      document.getElementById('form-view').classList.add('d-none-custom');
+      document.getElementById('error-alert').classList.add('d-none-custom');
+      
+      document.getElementById(view + '-view').classList.remove('d-none-custom');
     }
 
-    function submitReport() {
-      var content = document.getElementById('formContent').value;
-      var status = document.getElementById('formStatus').value;
-      var user = document.getElementById('formUser').value;
-
-      if (!user) {
-        alert('担当者名を入力してください');
+    // リストへ戻る
+    function showList() {
+      // ?id や ?token がURLについている場合は、素のURL(appUrl)にリダイレクトさせる
+      if (window.location.search) {
+        window.top.location.href = appUrl;
         return;
       }
+      
+      if (allAssets.length === 0) {
+        fetchAllLists();
+      } else {
+        switchView('list');
+      }
+    }
 
-      document.getElementById('submitBtn').disabled = true;
-      document.getElementById('submitBtn').innerText = '送信中...';
+    // 新規フォームを開く
+    function openNewForm() {
+      currentMode = 'new';
+      document.getElementById('assetForm').reset();
+      document.getElementById('f_operator').value = localStorage.getItem('lastOperator') || '';
+      
+      // 今日の日付セット
+      const today = new Date();
+      document.getElementById('f_purchase_date').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      
+      // 表示切替
+      document.getElementById('formTitle').innerText = '新規備品登録';
+      document.getElementById('statusHeader').style.display = 'none';
+      document.getElementById('editActions').style.display = 'none';
+      document.getElementById('historySection').style.display = 'none';
+      document.getElementById('registerAction').style.display = 'block';
+      document.getElementById('f_manual_link').classList.add('d-none-custom');
 
-      google.script.run.withSuccessHandler(function (res) {
-        alert('報告が完了しました！');
-        // 白い画面を防ぐため、フルリロードはせず、データを再取得して表示を更新する
-        hideForm();
-        loadData(); // データを再取得する関数を呼び出し
-      }).registerReport({
-        itemId: '<?= itemId ?>',
-        content: content,
-        status: status,
-        user: user
+      switchView('form');
+    }
+
+    // 既存データをフォームへ反映(編集モード)
+    function openEditFormFromList(id) {
+      const asset = allAssets.find(a => a.id === id);
+      if(!asset) return;
+      
+      // 履歴を取るため getAssetData を叩く (リストには履歴が含まれていない為)
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(fullAsset) {
+          populateForm(fullAsset);
+          currentMode = 'edit';
+          switchView('form');
+          hideLoading();
+        })
+        .withFailureHandler(handleServerError)
+        .getAssetData(asset.qr_token);
+    }
+
+    function populateForm(asset) {
+      document.getElementById('formTitle').innerText = '台帳詳細・修正';
+      document.getElementById('statusHeader').style.display = 'flex';
+      document.getElementById('editActions').style.display = 'block';
+      document.getElementById('historySection').style.display = 'block';
+      document.getElementById('registerAction').style.display = 'none';
+
+      // hidden
+      document.getElementById('assetId').value = asset.id || '';
+      document.getElementById('qrToken').value = asset.qr_token || '';
+
+      // values
+      document.getElementById('f_status').value = asset.status || '稼働中';
+      document.getElementById('f_name').value = asset.name || '';
+      document.getElementById('f_asset_tag').value = asset.asset_tag || '';
+      document.getElementById('f_model_number').value = asset.model_number || '';
+      document.getElementById('f_category_id').value = asset.category_id || '';
+      document.getElementById('f_dept_id').value = asset.dept_id || '';
+      document.getElementById('f_floor').value = asset.floor || '';
+      document.getElementById('f_location').value = asset.location || '';
+      document.getElementById('f_purchase_date').value = formatToHtmlDate(asset.purchase_date);
+      document.getElementById('f_price').value = asset.price || '';
+      document.getElementById('f_useful_life').value = asset.useful_life || '';
+      document.getElementById('f_vendor').value = asset.vendor || '';
+      document.getElementById('f_repair_vendor').value = asset.repair_vendor || '';
+      document.getElementById('f_note').value = asset.note || '';
+      document.getElementById('f_manual_url').value = asset.manual_url || '';
+      
+      // link url
+      const mLink = document.getElementById('f_manual_link');
+      if(asset.manual_url) {
+        mLink.href = asset.manual_url;
+        mLink.classList.remove('d-none-custom');
+      } else {
+        mLink.classList.add('d-none-custom');
+      }
+      
+      // Timeline
+      const tl = document.getElementById('historyTimeline');
+      let hHtml = '';
+      if(asset.history && asset.history.length > 0) {
+        asset.history.forEach(h => {
+          hHtml += `<div class="timeline-item"><div class="timeline-marker"></div><div class="small fw-bold">${h.timestamp} - ${h.type}</div><div class="small text-muted">${h.operator}${h.note? ' : '+h.note:''}</div></div>`;
+        });
+      } else {
+        hHtml = '<div class="text-muted small">履歴はありません</div>';
+      }
+      tl.innerHTML = hHtml;
+    }
+
+
+    // --- [ List Rendering ] ---
+    function renderList(assets) {
+      const container = document.getElementById('listContainer');
+      container.innerHTML = '';
+      
+      if (assets.length === 0) {
+        document.getElementById('noResult').classList.remove('d-none-custom');
+        return;
+      }
+      document.getElementById('noResult').classList.add('d-none-custom');
+
+      assets.forEach(asset => {
+        const badgeClass = asset.status === '稼働中' ? 'bg-active' :
+                           asset.status === '故障中' ? 'bg-faulty' :
+                           asset.status === '予備' ? 'bg-spare' : 'bg-disposed';
+        const locationStr = [asset.floor, asset.location].filter(Boolean).join(' ') || '場所未設定';
+        // 管理番号の表示用（もし空なら型番を出す、等）
+        const subTitle = asset.asset_tag || asset.model_number || '番号未設定';
+
+        const card = `
+          <div class="col-12 col-md-6 col-lg-4">
+            <a href="${appUrl}?id=${asset.id}" target="_top" class="text-decoration-none">
+              <div class="card asset-list-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="status-badge ${badgeClass}">${asset.status || '不明'}</span>
+                  <small class="text-muted text-truncate ms-2">${subTitle}</small>
+                </div>
+                <h5 class="fw-bold mb-1 text-dark">${asset.name || '名称未設定'}</h5>
+                <div class="small text-muted mb-2"><i class="bi bi-tag text-secondary me-1"></i>${asset.category_id || '---'}</div>
+                <div class="mt-auto pt-2 border-top small text-secondary">
+                  <div class="text-truncate"><i class="bi bi-geo-alt me-1"></i>${locationStr}</div>
+                  <div class="text-truncate mt-1"><i class="bi bi-building me-1"></i>${asset.dept_id || '---'}</div>
+                </div>
+              </div>
+            </a>
+          </div>
+        `;
+        container.innerHTML += card;
       });
     }
 
-    // データを取得・表示する処理を関数化
-    function loadData() {
-      document.getElementById('loading').style.display = 'block';
-      document.getElementById('content').style.display = 'none';
-
-      google.script.run.withSuccessHandler(function (data) {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('content').style.display = 'block';
-
-        if (data) {
-          currentData = data;
-          document.getElementById('itemName').innerText = data.name + ' (' + data.id + ')';
-          document.getElementById('itemStatus').innerText = '✅ ' + data.status + ' (最終点検: ' + data.lastInspection + ')';
-          document.getElementById('itemDepartment').innerText = data.department;
-          document.getElementById('itemPurchaseDate').innerText = data.purchaseDate;
-          document.getElementById('manualBtn').href = data.manualUrl;
-
-          var historyHtml = '';
-          data.history.forEach(function (h) {
-            historyHtml += '<li class="history-item"><strong>' + h.date + '</strong> : ' + h.content + ' (' + h.user + ')</li>';
-          });
-          document.getElementById('historyList').innerHTML = historyHtml;
-        } else {
-          document.getElementById('content').innerHTML = '<div class="card"><p>備品データが見つかりません。ID: <?= itemId ?> がマスタに登録されているか確認してください。</p></div>';
-        }
-      }).getItemData('<?= itemId ?>');
+    function filterList() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = allAssets.filter(a => {
+        return (a.name && String(a.name).toLowerCase().includes(q)) || 
+               (a.asset_tag && String(a.asset_tag).toLowerCase().includes(q)) ||
+               (a.model_number && String(a.model_number).toLowerCase().includes(q)) ||
+               (a.category_id && String(a.category_id).toLowerCase().includes(q)) ||
+               (a.location && String(a.location).toLowerCase().includes(q)) ||
+               (a.dept_id && String(a.dept_id).toLowerCase().includes(q));
+      });
+      renderList(filtered);
     }
 
-    // 初回読み込み
-    loadData();
-  </script>
-  <? } else { ?>
-  <div class="card">
-    <p>エラー: 備品IDが指定されていません。正しいQRコードからアクセスしてください。</p>
-  </div>
-  <? } ?>
-</body>
 
+    // --- [ Actions Add/Update/Report ] ---
+    
+    // 台帳に追加 (新規)
+    document.getElementById('assetForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const op = document.getElementById('f_operator').value;
+      localStorage.setItem('lastOperator', op);
+
+      const data = gatherFormData();
+
+      if (currentMode === 'new') {
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if(res.success) {
+              alert('新規台帳データを登録しました。画面を再読込します。');
+              // QRがない場合のデフォルトモードは一覧のため全再読み込みでOK
+              window.top.location.href = appUrl; 
+            } else {
+              showError(res.error);
+              hideLoading();
+            }
+          })
+          .withFailureHandler(handleServerError)
+          .registerNewAsset(data);
+      }
+    });
+
+    // 台帳を保存 (編集)
+    function saveAsset() {
+      const form = document.getElementById('assetForm');
+      if(!form.checkValidity()) { form.reportValidity(); return; }
+
+      const op = document.getElementById('f_operator').value;
+      localStorage.setItem('lastOperator', op);
+      const data = gatherFormData();
+      data.id = document.getElementById('assetId').value;
+
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if(res.success) {
+            alert('マスターデータを更新しました。');
+            // 全再ロード
+            fetchAllLists();
+          } else {
+            showError(res.error);
+            hideLoading();
+          }
+        })
+        .withFailureHandler(handleServerError)
+        .updateAsset(data);
+    }
+
+    function gatherFormData() {
+      return {
+        status: document.getElementById('f_status').value,
+        name: document.getElementById('f_name').value,
+        model_number: document.getElementById('f_model_number').value,
+        category_id: document.getElementById('f_category_id').value,
+        dept_id: document.getElementById('f_dept_id').value,
+        floor: document.getElementById('f_floor').value,
+        location: document.getElementById('f_location').value,
+        purchase_date: document.getElementById('f_purchase_date').value,
+        price: document.getElementById('f_price').value,
+        useful_life: document.getElementById('f_useful_life').value,
+        vendor: document.getElementById('f_vendor').value,
+        repair_vendor: document.getElementById('f_repair_vendor').value,
+        manual_url: document.getElementById('f_manual_url').value,
+        note: document.getElementById('f_note').value,
+        operator: document.getElementById('f_operator').value
+      };
+    }
+
+    // --- Report Action ---
+    document.getElementById('r_type').addEventListener('change', function() {
+      const group = document.getElementById('r_locationGroup');
+      group.style.display = (this.value === '移動' || this.value === '棚卸') ? 'block' : 'none';
+      if(this.value === '廃棄') document.getElementById('r_status').value = '廃棄済';
+    });
+
+    function openReportModal() {
+      document.getElementById('r_status').value = document.getElementById('f_status').value;
+      document.getElementById('r_floor').value = document.getElementById('f_floor').value;
+      document.getElementById('r_location').value = document.getElementById('f_location').value;
+      reportModal.show();
+    }
+
+    function submitReport() {
+      const op = document.getElementById('f_operator').value;
+      if (!op) { alert('台帳フォーム下部の「担当者名」を入力してください。'); reportModal.hide(); document.getElementById('f_operator').focus(); return; }
+
+      const payload = {
+        asset_id: document.getElementById('assetId').value,
+        type: document.getElementById('r_type').value,
+        status: document.getElementById('r_status').value,
+        operator: op,
+        note: document.getElementById('r_note').value,
+        new_floor: document.getElementById('r_floor').value,
+        new_location: document.getElementById('r_location').value
+      };
+
+      reportModal.hide();
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success) {
+            alert('レポートを記録しました。');
+            // データ更新(もう一度フォーム開く)
+            openEditFormFromList(payload.asset_id);
+          } else {
+            showError(res.error);
+            hideLoading();
+          }
+        })
+        .withFailureHandler(handleServerError)
+        .registerReport(payload);
+    }
+
+
+    // --- [ Utilities ] ---
+    function formatToHtmlDate(dateStr) {
+      if(!dateStr) return '';
+      // "yyyy/mm/dd hh:mm" -> "yyyy-mm-dd" for input type="date"
+      return dateStr.split(' ')[0].replace(/\//g, '-');
+    }
+    function showLoading() { document.getElementById('loading-view').classList.remove('d-none-custom'); }
+    function hideLoading() { document.getElementById('loading-view').classList.add('d-none-custom'); }
+    function showError(msg) {
+      document.getElementById('error-message').innerText = msg;
+      document.getElementById('error-alert').classList.remove('d-none-custom');
+      window.scrollTo(0, 0);
+    }
+    function handleServerError(err) {
+      console.error(err);
+      hideLoading();
+      showError('サーバーと通信できませんでした: ' + err.message);
+    }
+  </script>
+</body>
 </html>
