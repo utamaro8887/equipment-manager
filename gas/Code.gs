@@ -256,7 +256,14 @@ function registerNewAsset(data) {
     // 逆引き用マッピング (プログラム用キー -> 予想される日本語ヘッダーの配列)
     const reverseMapping = {
       'id': ['ID', 'システム識別ID', 'id'],
+      'asset_tag': ['備品管理番号', '管理ID', 'asset_tag'],
+      'category_code': ['カテゴリコード', 'カテゴリ', 'category_code'],
+      'name': ['備品名称', '名称', 'name'],
+      'model_number': ['型番', 'model_number'],
+      'status': ['状態', '現在の状態', 'ステータス', 'status'],
+      'floor': ['設置フロア', '設置階', 'floor'],
       'location': ['設置場所', '場所', 'location'],
+      'asset_class': ['資産区分', 'asset_class'],
       'qr_token': ['QRアクセスキー', 'トークン', 'qr_token'],
       'manual_url': ['説明書リンク', 'マニュアルURL', 'manual_url'],
       'purchase_date': ['購入年月日', '購入日', 'purchase_date'],
@@ -265,7 +272,7 @@ function registerNewAsset(data) {
       'useful_life': ['耐用年数', 'useful_life'],
       'repair_vendor': ['修理依頼先', 'repair_vendor'],
       'note': ['備考', 'note'],
-      'category_code': ['カテゴリコード', 'カテゴリ', 'category_code']
+      'input_operator': ['入力担当者', '入力担当者名', 'input_operator']
     };
     
     // 備品管理番号を自動計算

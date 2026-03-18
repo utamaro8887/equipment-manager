@@ -154,18 +154,39 @@
         </div>
 
         <div class="row g-3 mb-3">
-          <div class="col-md-4 col-4">
+          <div class="col-md-6">
             <label class="form-label small fw-bold text-muted">設置階</label>
-            <input type="text" class="form-control" id="f_floor" list="floorList" placeholder="3F">
-            <datalist id="floorList"></datalist>
+            <select class="form-select" id="f_floor">
+              <option value="">選択してください...</option>
+            </select>
           </div>
-          <div class="col-md-8 col-8">
+          <div class="col-md-6">
             <label class="form-label small fw-bold text-muted">設置場所</label>
             <input type="text" class="form-control" id="f_location" list="locList" placeholder="ナースST">
             <datalist id="locList"></datalist>
           </div>
         </div>
 
+        <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">資産・管理情報</h5>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4 col-6">
+            <label class="form-label small fw-bold text-muted">購入日</label>
+            <input type="date" class="form-control" id="f_purchase_date">
+          </div>
+          <div class="col-md-4 col-6">
+            <label class="form-label small fw-bold text-muted">購入金額(円)</label>
+            <input type="number" class="form-control" id="f_price">
+          </div>
+          <div class="col-md-4 col-12">
+            <label class="form-label small fw-bold text-muted">耐用年数(年)</label>
+            <input type="number" class="form-control" id="f_useful_life">
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-bold text-muted">購入業者</label>
+            <input type="text" class="form-control" id="f_vendor">
+          </div>
           <div class="col-md-6">
             <label class="form-label small fw-bold text-muted">修理依頼先</label>
             <input type="text" class="form-control" id="f_repair_vendor">
@@ -359,32 +380,44 @@
         const locDatalist = document.getElementById('locList');
         locDatalist.innerHTML = '';
         
-        if (masterLists['場所']) {
-          // もしマスタに「3Fナースステーション」のように階数を含む名前があれば絞り込む
-          // または、階数マスタとは別に管理されている場合はそのロジックを書く。
-          // ここでは単純にマスタ全表示とするが、要望があればフィルタリングを強化
-          masterLists['場所'].forEach(loc => {
-            if (!floor || loc.includes(floor)) {
-              locDatalist.innerHTML += `<option value="${loc}">`;
-            }
-          });
-        }
+        const locOptions = masterLists['設置場所'] || masterLists['場所'] || [];
+        locOptions.forEach(loc => {
+          if (!floor || loc.includes(floor)) {
+            locDatalist.innerHTML += `<option value="${loc}">`;
+          }
+        });
       });
     }
 
     function populateMasterDatalists() {
-      const mapping = {
-        'フロア': 'floorList',
-        '場所': 'locList'
-      };
-      for (const [key, id] of Object.entries(mapping)) {
-        if (masterLists[key]) {
-          const dl = document.getElementById(id);
-          dl.innerHTML = '';
-          masterLists[key].forEach(val => {
-            dl.innerHTML += `<option value="${val}">`;
-          });
-        }
+      // 設置フロア (SELECT)
+      const floorSelect = document.getElementById('f_floor');
+      const floorOptions = masterLists['設置フロア'] || masterLists['フロア'] || [];
+      floorSelect.innerHTML = '<option value="">選択してください...</option>';
+      floorOptions.forEach(val => {
+        floorSelect.innerHTML += `<option value="${val}">${val}</option>`;
+      });
+      if (window.pendingAssetFloor) {
+        floorSelect.value = window.pendingAssetFloor;
+        delete window.pendingAssetFloor;
+      }
+
+      // 設置場所 (DATALIST)
+      const locList = document.getElementById('locList');
+      locList.innerHTML = '';
+      const locOptions = masterLists['設置場所'] || masterLists['場所'] || [];
+      locOptions.forEach(val => {
+        locList.innerHTML += `<option value="${val}">`;
+      });
+      
+      // 報告種別 (SELECT)
+      const reportOptions = masterLists['報告種別'] || [];
+      if (reportOptions.length > 0) {
+        const rTypeSelect = document.getElementById('r_type');
+        rTypeSelect.innerHTML = '';
+        reportOptions.forEach(val => {
+          rTypeSelect.innerHTML += `<option value="${val}">${val}</option>`;
+        });
       }
     }
 
@@ -554,6 +587,7 @@
       setCategoryByCode(asset.category_code);
 
       document.getElementById('f_floor').value = asset.floor || '';
+      window.pendingAssetFloor = asset.floor || '';
       document.getElementById('f_location').value = asset.location || '';
       document.getElementById('f_asset_class').value = asset.asset_class || '備品';
       document.getElementById('f_purchase_date').value = formatToHtmlDate(asset.purchase_date);
