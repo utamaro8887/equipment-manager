@@ -322,7 +322,7 @@ function updateAsset(data) {
     // idで検索
     let rowIndex = -1;
     for (let i = 1; i < assetsData.length; i++) {
-      if (assetsData[i][0] === data.id) {
+      if (String(assetsData[i][0]) === String(data.id)) {
         rowIndex = i + 1;
         break;
       }
@@ -487,7 +487,7 @@ function registerReport(data) {
     // asset_id(A列)で検索
     let rowIndex = -1;
     for (let i = 1; i < assetsData.length; i++) {
-      if (assetsData[i][0] === data.asset_id) {
+      if (String(assetsData[i][0]) === String(data.asset_id)) {
         rowIndex = i + 1;
         break;
       }

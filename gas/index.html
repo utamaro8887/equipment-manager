@@ -86,11 +86,8 @@
       </button>
       <h2 class="h4 mb-0 fw-bold" id="formTitle">備品詳細</h2>
       
-      <!-- 既存データ時のみ表示される更新・報告ボタン等 -->
+      <!-- 既存データ時のみ表示される報告ボタン等 -->
       <div class="ms-auto" id="editActions" style="display:none;">
-        <button class="btn btn-sm btn-success shadow-sm me-2" onclick="saveAsset()">
-          <i class="bi bi-save me-1"></i>保存
-        </button>
         <button class="btn btn-sm btn-warning shadow-sm text-dark" onclick="openReportModal()">
           <i class="bi bi-flag me-1"></i>報告
         </button>
@@ -237,10 +234,13 @@
           <input type="text" class="form-control" id="f_operator" placeholder="操作者の氏名を入力" required>
         </div>
 
-        <!-- 新規登録時のみ表示される下部ボタン -->
-        <div class="d-grid mt-4" id="registerAction" style="display:none;">
-          <button type="submit" class="btn btn-primary btn-lg action-btn shadow-sm">
-            <i class="bi bi-cloud-upload me-2"></i>台帳に追加する
+        <!-- フォーム下部アクションボタン -->
+        <div class="d-grid gap-2 mt-4" id="formActions" style="display:none;">
+          <button type="submit" id="btnRegister" class="btn btn-primary btn-lg action-btn shadow-sm" style="display:none;">
+            <i class="bi bi-cloud-upload me-2"></i>台帳に追加する (新規)
+          </button>
+          <button type="button" id="btnUpdate" class="btn btn-success btn-lg action-btn shadow-sm" style="display:none;" onclick="saveAsset()">
+            <i class="bi bi-save me-2"></i>台帳を更新する
           </button>
         </div>
       </form>
@@ -540,7 +540,11 @@
       document.getElementById('statusHeader').style.display = 'none';
       document.getElementById('editActions').style.display = 'none';
       document.getElementById('historySection').style.display = 'none';
-      document.getElementById('registerAction').style.display = 'block';
+      
+      document.getElementById('formActions').style.display = 'block';
+      document.getElementById('btnRegister').style.display = 'block';
+      document.getElementById('btnUpdate').style.display = 'none';
+      
       document.getElementById('f_manual_link').classList.add('d-none-custom');
 
       switchView('form');
@@ -569,7 +573,10 @@
       document.getElementById('statusHeader').style.display = 'flex';
       document.getElementById('editActions').style.display = 'block';
       document.getElementById('historySection').style.display = 'block';
-      document.getElementById('registerAction').style.display = 'none';
+      
+      document.getElementById('formActions').style.display = 'block';
+      document.getElementById('btnRegister').style.display = 'none';
+      document.getElementById('btnUpdate').style.display = 'block';
 
       // hidden
       document.getElementById('assetId').value = asset.id || '';
