@@ -362,8 +362,8 @@
     };
 
     function setupEventListeners() {
-      // 型番を半角大文字に自動変換
-      document.getElementById('f_model_number').addEventListener('input', function() {
+      // 型番を半角大文字に自動変換（入力確定・フォーカス外れ時に実行）
+      document.getElementById('f_model_number').addEventListener('blur', function() {
         this.value = this.value.toUpperCase().replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
       });
 
