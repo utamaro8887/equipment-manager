@@ -360,9 +360,6 @@ function updateAsset(data) {
     // 型番を半角大文字に正規化
     if (data.model_number) data.model_number = String(data.model_number).toUpperCase().replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
 
-    // 備品管理番号を自動計算で上書き
-    data.asset_tag = generateAssetTag(data.category_code, data.purchase_date);
-    
     // 入力担当者もデータに含める
     if (data.operator) data.input_operator = data.operator;
 
