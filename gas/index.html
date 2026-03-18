@@ -114,23 +114,20 @@
 
         <h5 class="fw-bold mb-3 border-bottom pb-2">基本情報</h5>
         <div class="mb-3">
-          <label class="form-label small fw-bold text-muted">備品名称 <span class="text-danger">*</span></label>
-          <input type="text" class="form-control fw-bold fs-5 text-primary" id="f_name" required placeholder="例: 車椅子(標準型)">
+          <label class="form-label small fw-bold text-muted">管理番号 <span class="badge bg-secondary font-monospace ms-1">自動採番</span></label>
+          <input type="text" class="form-control fw-bold fs-4 text-primary font-monospace" id="f_asset_tag" placeholder="保存時に連番付きで自動採番されます" disabled>
         </div>
         
         <div class="row g-3 mb-3">
           <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">管理番号 <span class="badge bg-secondary font-monospace ms-1">自動採番</span></label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
-              <input type="text" class="form-control text-muted" id="f_asset_tag" placeholder="保存時にカテゴリ＋年月で自動採番されます" disabled>
-            </div>
+            <label class="form-label small fw-bold text-muted">備品名称 <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="f_name" required placeholder="例: 車椅子(標準型)">
           </div>
           <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">型番・品番</label>
+            <label class="form-label small fw-bold text-muted">型番・品番 <span class="text-danger">*</span></label>
             <div class="input-group">
               <span class="input-group-text"><i class="bi bi-upc"></i></span>
-              <input type="text" class="form-control" id="f_model_number" placeholder="例: NA-VD110L">
+              <input type="text" class="form-control" id="f_model_number" required placeholder="例: NA-VD110L">
             </div>
           </div>
         </div>
@@ -154,31 +151,24 @@
             <!-- 内部的にはコードを保持して送信する -->
             <input type="hidden" id="f_category_code" name="category_code">
           </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">メーカー <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-building"></i></span>
-              <input type="text" class="form-control" id="f_maker" list="makerList" required>
-              <datalist id="makerList"></datalist>
-            </div>
-          </div>
         </div>
 
         <div class="row g-3 mb-3">
-          <div class="col-md-4">
-            <label class="form-label small fw-bold text-muted">管理部署</label>
-            <input type="text" class="form-control" id="f_dept_id" list="deptList">
-            <datalist id="deptList"></datalist>
-          </div>
-          <div class="col-md-2 col-4">
+          <div class="col-md-4 col-4">
             <label class="form-label small fw-bold text-muted">設置階</label>
             <input type="text" class="form-control" id="f_floor" list="floorList" placeholder="3F">
             <datalist id="floorList"></datalist>
           </div>
-          <div class="col-md-6 col-8">
+          <div class="col-md-8 col-8">
             <label class="form-label small fw-bold text-muted">設置場所</label>
             <input type="text" class="form-control" id="f_location" list="locList" placeholder="ナースST">
             <datalist id="locList"></datalist>
+          </div>
+        </div>
+
+          <div class="col-md-6">
+            <label class="form-label small fw-bold text-muted">修理依頼先</label>
+            <input type="text" class="form-control" id="f_repair_vendor">
           </div>
         </div>
 
@@ -188,32 +178,6 @@
             <option value="備品">備品</option>
             <option value="固定資産（会計報告対象）">固定資産（会計報告対象）</option>
           </select>
-        </div>
-
-        <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">資産・管理情報</h5>
-        <div class="row g-3 mb-3">
-          <div class="col-md-4 col-6">
-            <label class="form-label small fw-bold text-muted">購入日</label>
-            <input type="date" class="form-control" id="f_purchase_date">
-          </div>
-          <div class="col-md-4 col-6">
-            <label class="form-label small fw-bold text-muted">購入金額(円)</label>
-            <input type="number" class="form-control" id="f_price">
-          </div>
-          <div class="col-md-4 col-12">
-            <label class="form-label small fw-bold text-muted">耐用年数(年)</label>
-            <input type="number" class="form-control" id="f_useful_life">
-          </div>
-        </div>
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">購入業者</label>
-            <input type="text" class="form-control" id="f_vendor">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">修理依頼先</label>
-            <input type="text" class="form-control" id="f_repair_vendor">
-          </div>
         </div>
 
         <div class="mb-3">
@@ -410,8 +374,6 @@
 
     function populateMasterDatalists() {
       const mapping = {
-        'メーカー': 'makerList',
-        '部署': 'deptList',
         'フロア': 'floorList',
         '場所': 'locList'
       };
@@ -591,8 +553,6 @@
       // 階層型カテゴリのセット
       setCategoryByCode(asset.category_code);
 
-      document.getElementById('f_maker').value = asset.maker || '';
-      document.getElementById('f_dept_id').value = asset.dept_id || '';
       document.getElementById('f_floor').value = asset.floor || '';
       document.getElementById('f_location').value = asset.location || '';
       document.getElementById('f_asset_class').value = asset.asset_class || '備品';
@@ -658,7 +618,6 @@
                 <div class="small text-muted mb-2"><i class="bi bi-tag text-secondary me-1"></i>${asset.category_code || '---'}</div>
                 <div class="mt-auto pt-2 border-top small text-secondary">
                   <div class="text-truncate"><i class="bi bi-geo-alt me-1"></i>${locationStr}</div>
-                  <div class="text-truncate mt-1"><i class="bi bi-building me-1"></i>${asset.dept_id || '---'}</div>
                 </div>
               </div>
             </a>
@@ -675,8 +634,7 @@
                (a.asset_tag && String(a.asset_tag).toLowerCase().includes(q)) ||
                (a.model_number && String(a.model_number).toLowerCase().includes(q)) ||
                (a.category_code && String(a.category_code).toLowerCase().includes(q)) ||
-               (a.location && String(a.location).toLowerCase().includes(q)) ||
-               (a.dept_id && String(a.dept_id).toLowerCase().includes(q));
+               (a.location && String(a.location).toLowerCase().includes(q));
       });
       renderList(filtered);
     }
@@ -742,8 +700,6 @@
         name: document.getElementById('f_name').value,
         model_number: document.getElementById('f_model_number').value,
         category_code: document.getElementById('f_category_code').value,
-        maker: document.getElementById('f_maker').value,
-        dept_id: document.getElementById('f_dept_id').value,
         floor: document.getElementById('f_floor').value,
         location: document.getElementById('f_location').value,
         asset_class: document.getElementById('f_asset_class').value,
