@@ -373,10 +373,26 @@ function updateAsset(data) {
         }
       }
     });
+
+    // 更新履歴を残す
+    const historySheet = ss.getSheetByName(SHEETS.HISTORY);
+    historySheet.appendRow([
+      new Date(),
+      data.id,
+      '点検', // マスタ修正のため点検扱い
+      data.operator || 'システム',
+      '台帳情報修正'
+    ]);
+    
+    return { success: true };
   } catch (e) {
-    // ...略
+    console.error('updateAsset Error:', e);
+    return { success: false, error: e.toString() };
+  } finally {
+    lock.releaseLock();
   }
 }
+
 
 /**
  * M_Listsシートから全てのマスタデータを取得
@@ -410,7 +426,7 @@ function getMasterLists() {
 
 /**
  * カテゴリマスタを階層構造で取得
- * M_Categories シート (A:大分類, B:中分類, C:コード)
+ * M_Categories シート (A:カテゴリID, B:大分類, C:中分類, D:コード)
  */
 function getCategoryMaster() {
   try {
@@ -419,7 +435,7 @@ function getCategoryMaster() {
     if (!sheet) return {};
 
     const values = sheet.getDataRange().getValues();
-    // ヘッダーを除外: 0:大分類, 1:中分類, 2:コード
+    // ヘッダーを除外: 0:カテゴリID, 1:大分類, 2:中分類, 3:コード
     const rows = values.slice(1);
     
     const master = {};
@@ -439,26 +455,6 @@ function getCategoryMaster() {
     return {};
   }
 }
-    
-    // 更新履歴を残す
-    const historySheet = ss.getSheetByName(SHEETS.HISTORY);
-    historySheet.appendRow([
-      new Date(),
-      data.id,
-      '点検', // マスタ修正のため点検扱い
-      data.operator || 'システム',
-      '台帳情報修正'
-    ]);
-    
-    return { success: true };
-  } catch (e) {
-    console.error('updateAsset Error:', e);
-    return { success: false, error: e.toString() };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
 
 /**
  * 報告の登録処理
