@@ -138,30 +138,59 @@
           </div>
         </div>
         <div class="row g-3 mb-3">
-          <div class="col-md-12">
-            <label class="form-label small fw-bold text-muted">カテゴリ</label>
+          <div class="col-md-6">
+            <label class="form-label small fw-bold text-muted">カテゴリ (大分類) <span class="text-danger">*</span></label>
             <div class="input-group">
               <span class="input-group-text"><i class="bi bi-tags"></i></span>
-              <input type="text" class="form-control" id="f_category_id" list="catList" required>
-              <datalist id="catList"><option value="車椅子"><option value="ベッド"><option value="点滴台"></datalist>
+              <select class="form-select" id="f_category_l1" required onchange="onCategoryL1Change()">
+                <option value="">大分類を選択...</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-bold text-muted">カテゴリ (中分類) <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <select class="form-select" id="f_category_l2" required disabled onchange="onCategoryL2Change()">
+                <option value="">先に大分類を選択...</option>
+              </select>
+            </div>
+            <!-- 内部的にはコードを保持して送信する -->
+            <input type="hidden" id="f_category_code" name="category_code">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-bold text-muted">メーカー <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-building"></i></span>
+              <input type="text" class="form-control" id="f_maker" list="makerList" required>
+              <datalist id="makerList"></datalist>
             </div>
           </div>
         </div>
 
-        <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">配置情報</h5>
         <div class="row g-3 mb-3">
           <div class="col-md-4">
             <label class="form-label small fw-bold text-muted">管理部署</label>
-            <input type="text" class="form-control" id="f_dept_id">
+            <input type="text" class="form-control" id="f_dept_id" list="deptList">
+            <datalist id="deptList"></datalist>
           </div>
           <div class="col-md-2 col-4">
             <label class="form-label small fw-bold text-muted">設置階</label>
-            <input type="text" class="form-control" id="f_floor" placeholder="3F">
+            <input type="text" class="form-control" id="f_floor" list="floorList" placeholder="3F">
+            <datalist id="floorList"></datalist>
           </div>
           <div class="col-md-6 col-8">
             <label class="form-label small fw-bold text-muted">設置場所</label>
-            <input type="text" class="form-control" id="f_location" placeholder="ナースST">
+            <input type="text" class="form-control" id="f_location" list="locList" placeholder="ナースST">
+            <datalist id="locList"></datalist>
           </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">資産区分</label>
+          <select class="form-select" id="f_asset_class">
+            <option value="備品">備品</option>
+            <option value="固定資産（会計報告対象）">固定資産（会計報告対象）</option>
+          </select>
         </div>
 
         <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">資産・管理情報</h5>
@@ -204,7 +233,7 @@
         </div>
 
         <div class="bg-light p-3 rounded" id="operatorSection">
-          <label class="form-label small fw-bold text-dark">今回の担当者名 <span class="text-danger">*</span></label>
+          <label class="form-label small fw-bold text-dark">入力担当者名 <span class="text-danger">*</span></label>
           <input type="text" class="form-control" id="f_operator" placeholder="操作者の氏名を入力" required>
         </div>
 
@@ -247,6 +276,7 @@
                 <option value="修理">修理・不具合</option>
                 <option value="棚卸">棚卸（所在確認）</option>
                 <option value="廃棄">廃棄</option>
+                <option value="その他">その他</option>
               </select>
             </div>
 
@@ -285,6 +315,7 @@
   <script>
     // --- [ State Management ] ---
     let allAssets = [];
+    let masterLists = {};
     let currentMode = 'list'; // 'list', 'edit', 'new'
     const reportModal = new bootstrap.Modal(document.getElementById('reportModal'));
 
@@ -295,6 +326,144 @@
       // Operator自動入力
       document.getElementById('f_operator').value = localStorage.getItem('lastOperator') || '';
       
+      // マスタデータ読み込み
+      google.script.run
+        .withSuccessHandler(function(lists) {
+          masterLists = lists;
+          populateMasterDatalists();
+        })
+        .getMasterLists();
+
+      // カテゴリマスタ読み込み
+      google.script.run
+        .withSuccessHandler(function(master) {
+          window.categoryMaster = master;
+          populateCategoryL1();
+          if (window.pendingAssetCode) {
+            setCategoryByCode(window.pendingAssetCode);
+            delete window.pendingAssetCode;
+          }
+        })
+        .getCategoryMaster();
+
+      // バリデーション・イベント設定
+      setupEventListeners();
+      
+      const token = '<?= token ?>';
+      // ...（以下略）
+    };
+
+    function setupEventListeners() {
+      // 型番を半角大文字に自動変換
+      document.getElementById('f_model_number').addEventListener('input', function() {
+        this.value = this.value.toUpperCase().replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+      });
+
+      // 購入金額 10万以上で資産区分アラート
+      document.getElementById('f_price').addEventListener('change', function() {
+        if (parseInt(this.value) >= 100000) {
+          alert('❗購入金額が10万円以上です。資産区分を「固定資産（会計報告対象）」に変更することを確認してください。');
+          document.getElementById('f_asset_class').value = '固定資産（会計報告対象）';
+        }
+      });
+
+      // 設置フロアに連動して設置場所を絞り込む
+      document.getElementById('f_floor').addEventListener('change', function() {
+        const floor = this.value;
+        const locDatalist = document.getElementById('locList');
+        locDatalist.innerHTML = '';
+        
+        if (masterLists['場所']) {
+          // もしマスタに「3Fナースステーション」のように階数を含む名前があれば絞り込む
+          // または、階数マスタとは別に管理されている場合はそのロジックを書く。
+          // ここでは単純にマスタ全表示とするが、要望があればフィルタリングを強化
+          masterLists['場所'].forEach(loc => {
+            if (!floor || loc.includes(floor)) {
+              locDatalist.innerHTML += `<option value="${loc}">`;
+            }
+          });
+        }
+      });
+    }
+
+    function populateMasterDatalists() {
+      const mapping = {
+        'メーカー': 'makerList',
+        '部署': 'deptList',
+        'フロア': 'floorList',
+        '場所': 'locList'
+      };
+      for (const [key, id] of Object.entries(mapping)) {
+        if (masterLists[key]) {
+          const dl = document.getElementById(id);
+          dl.innerHTML = '';
+          masterLists[key].forEach(val => {
+            dl.innerHTML += `<option value="${val}">`;
+          });
+        }
+      }
+    }
+
+    // --- [ Category Master Logic ] ---
+    function populateCategoryL1() {
+      const l1Select = document.getElementById('f_category_l1');
+      l1Select.innerHTML = '<option value="">大分類を選択...</option>';
+      if (!window.categoryMaster) return;
+
+      Object.keys(window.categoryMaster).forEach(l1 => {
+        const opt = document.createElement('option');
+        opt.value = l1;
+        opt.textContent = l1;
+        l1Select.appendChild(opt);
+      });
+    }
+
+    function onCategoryL1Change() {
+      const l1 = document.getElementById('f_category_l1').value;
+      const l2Select = document.getElementById('f_category_l2');
+      const hiddenCode = document.getElementById('f_category_code');
+      
+      l2Select.innerHTML = '<option value="">中分類を選択...</option>';
+      hiddenCode.value = '';
+
+      if (l1 && window.categoryMaster[l1]) {
+        l2Select.disabled = false;
+        window.categoryMaster[l1].forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item.code; // valueにコードを保持
+          opt.textContent = item.name;
+          l2Select.appendChild(opt);
+        });
+      } else {
+        l2Select.disabled = true;
+        l2Select.innerHTML = '<option value="">先に大分類を選択...</option>';
+      }
+    }
+
+    function onCategoryL2Change() {
+      const l2Code = document.getElementById('f_category_l2').value;
+      document.getElementById('f_category_code').value = l2Code;
+    }
+
+    function setCategoryByCode(code) {
+      if (!code) return;
+      if (!window.categoryMaster) {
+        window.pendingAssetCode = code;
+        return;
+      }
+      
+      // コードから大分類・中分類を逆引き
+      for (const [l1, items] of Object.entries(window.categoryMaster)) {
+        const found = items.find(it => it.code === code);
+        if (found) {
+          document.getElementById('f_category_l1').value = l1;
+          onCategoryL1Change();
+          document.getElementById('f_category_l2').value = code;
+          document.getElementById('f_category_code').value = code;
+          return;
+        }
+      }
+    }
       const token = '<?= token ?>';
       const idStr = '<?= id ?>';
       
@@ -414,10 +583,15 @@
       document.getElementById('f_name').value = asset.name || '';
       document.getElementById('f_asset_tag').value = asset.asset_tag || '';
       document.getElementById('f_model_number').value = asset.model_number || '';
-      document.getElementById('f_category_id').value = asset.category_id || '';
+      
+      // 階層型カテゴリのセット
+      setCategoryByCode(asset.category_code);
+
+      document.getElementById('f_maker').value = asset.maker || '';
       document.getElementById('f_dept_id').value = asset.dept_id || '';
       document.getElementById('f_floor').value = asset.floor || '';
       document.getElementById('f_location').value = asset.location || '';
+      document.getElementById('f_asset_class').value = asset.asset_class || '備品';
       document.getElementById('f_purchase_date').value = formatToHtmlDate(asset.purchase_date);
       document.getElementById('f_price').value = asset.price || '';
       document.getElementById('f_useful_life').value = asset.useful_life || '';
@@ -477,7 +651,7 @@
                   <small class="text-muted text-truncate ms-2">${subTitle}</small>
                 </div>
                 <h5 class="fw-bold mb-1 text-dark">${asset.name || '名称未設定'}</h5>
-                <div class="small text-muted mb-2"><i class="bi bi-tag text-secondary me-1"></i>${asset.category_id || '---'}</div>
+                <div class="small text-muted mb-2"><i class="bi bi-tag text-secondary me-1"></i>${asset.category_code || '---'}</div>
                 <div class="mt-auto pt-2 border-top small text-secondary">
                   <div class="text-truncate"><i class="bi bi-geo-alt me-1"></i>${locationStr}</div>
                   <div class="text-truncate mt-1"><i class="bi bi-building me-1"></i>${asset.dept_id || '---'}</div>
@@ -496,7 +670,7 @@
         return (a.name && String(a.name).toLowerCase().includes(q)) || 
                (a.asset_tag && String(a.asset_tag).toLowerCase().includes(q)) ||
                (a.model_number && String(a.model_number).toLowerCase().includes(q)) ||
-               (a.category_id && String(a.category_id).toLowerCase().includes(q)) ||
+               (a.category_code && String(a.category_code).toLowerCase().includes(q)) ||
                (a.location && String(a.location).toLowerCase().includes(q)) ||
                (a.dept_id && String(a.dept_id).toLowerCase().includes(q));
       });
@@ -563,10 +737,12 @@
         status: document.getElementById('f_status').value,
         name: document.getElementById('f_name').value,
         model_number: document.getElementById('f_model_number').value,
-        category_id: document.getElementById('f_category_id').value,
+        category_code: document.getElementById('f_category_code').value,
+        maker: document.getElementById('f_maker').value,
         dept_id: document.getElementById('f_dept_id').value,
         floor: document.getElementById('f_floor').value,
         location: document.getElementById('f_location').value,
+        asset_class: document.getElementById('f_asset_class').value,
         purchase_date: document.getElementById('f_purchase_date').value,
         price: document.getElementById('f_price').value,
         useful_life: document.getElementById('f_useful_life').value,

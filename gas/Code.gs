@@ -10,7 +10,8 @@ const SHEETS = {
   ASSETS: 'T_Assets',
   HISTORY: 'T_History',
   DEPTS: 'M_Depts',
-  CATEGORIES: 'M_Categories'
+  CATEGORIES: 'M_Categories',
+  LISTS: 'M_Lists'
 };
 
 // ステータス・タイプ定数
@@ -27,7 +28,8 @@ const LOG_TYPES = {
   INSPECTION: '点検',
   MOVE: '移動',
   INVENTORY: '棚卸',
-  DISPOSAL: '廃棄'
+  DISPOSAL: '廃棄',
+  OTHER: 'その他'
 };
 
 /**
@@ -116,14 +118,16 @@ function normalizeKeys(obj, type) {
   const mapping = {
     ASSETS: {
       'ID': 'id', 'システム識別ID': 'id', 'id': 'id',
-      '型番': 'model_number', 'model_number': 'model_number',
       '備品管理番号': 'asset_tag', '管理ID': 'asset_tag', 'asset_tag': 'asset_tag',
-      'カテゴリ名': 'category_id', 'カテゴリID': 'category_id', 'category_id': 'category_id',
+      'カテゴリコード': 'category_code', 'カテゴリ': 'category_code', 'category_code': 'category_code',
+      'メーカー': 'maker', 'maker': 'maker',
       '備品名称': 'name', '名称': 'name', 'name': 'name',
-      '現在の状態': 'status', 'ステータス': 'status', 'status': 'status',
-      '管理部署名': 'dept_id', '部署ID': 'dept_id', 'dept_id': 'dept_id',
-      '設置階': 'floor', 'floor': 'floor',
+      '型番': 'model_number', 'model_number': 'model_number',
+      '状態': 'status', '現在の状態': 'status', 'ステータス': 'status', 'status': 'status',
+      '管理部署': 'dept_id', '管理部署名': 'dept_id', '部署ID': 'dept_id', 'dept_id': 'dept_id',
+      '設置フロア': 'floor', '設置階': 'floor', 'floor': 'floor',
       '設置場所': 'location', '場所': 'location', 'location': 'location',
+      '資産区分': 'asset_class', 'asset_class': 'asset_class',
       'QRアクセスキー': 'qr_token', 'トークン': 'qr_token', 'qr_token': 'qr_token',
       '説明書リンク': 'manual_url', 'マニュアルURL': 'manual_url', 'manual_url': 'manual_url',
       '購入年月日': 'purchase_date', '購入日': 'purchase_date', 'purchase_date': 'purchase_date',
@@ -131,13 +135,14 @@ function normalizeKeys(obj, type) {
       '購入金額': 'price', '価格': 'price', 'price': 'price',
       '耐用年数': 'useful_life', 'useful_life': 'useful_life',
       '修理依頼先': 'repair_vendor', 'repair_vendor': 'repair_vendor',
-      '備考': 'note', 'note': 'note'
+      '備考': 'note', 'note': 'note',
+      '入力担当者': 'input_operator', '入力担当者名': 'input_operator', 'input_operator': 'input_operator'
     },
     HISTORY: {
       '報告日時': 'timestamp', '日時': 'timestamp', 'timestamp': 'timestamp',
       '対象備品ID': 'asset_id', '備品ID': 'asset_id', 'asset_id': 'asset_id',
       '報告種別': 'type', '種別': 'type', 'type': 'type',
-      '担当者名': 'operator', '担当者': 'operator', 'operator': 'operator',
+      '登録者名': 'operator', '担当者名': 'operator', '担当者': 'operator', 'operator': 'operator',
       '備考・メモ': 'note', '備考': 'note', 'note': 'note'
     }
   };
@@ -168,7 +173,7 @@ function getAssetList() {
                  .map(a => ({
                    id: a.id,
                    asset_tag: a.asset_tag,
-                   category_id: a.category_id,
+                   category_code: a.category_code,
                    name: a.name,
                    model_number: a.model_number,
                    status: a.status,
@@ -185,11 +190,12 @@ function getAssetList() {
 
 /**
  * 備品管理番号の自動生成
- * カテゴリ名 & 購入年月日の西暦下2桁+月2桁
+ * カテゴリコード + 購入年月(YYMM) + 連番 (-01)
+ * すでに同一カテゴリ・年月の備品があれば連番をカウントアップする
  */
-function generateAssetTag(categoryId, purchaseDateString) {
-  const cat = categoryId || '未分類';
-  let datePart = '----';
+function generateAssetTag(categoryCode, purchaseDateString) {
+  const code = categoryCode || 'XX';
+  let datePart = '0000';
   
   if (purchaseDateString) {
     const d = new Date(purchaseDateString);
@@ -199,7 +205,34 @@ function generateAssetTag(categoryId, purchaseDateString) {
       datePart = `${yy}${mm}`;
     }
   }
-  return `${cat}${datePart}`;
+
+  const prefix = `${code}${datePart}-`;
+  
+  // 既存のシートから同じプレフィックスの最大連番を探す
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEETS.ASSETS);
+    const data = sheet.getDataRange().getValues();
+    const tagIdx = data[0].indexOf('備品管理番号');
+    if (tagIdx === -1) return `${prefix}01`;
+
+    let maxSeq = 0;
+    for (let i = 1; i < data.length; i++) {
+      const tag = String(data[i][tagIdx]);
+      if (tag.startsWith(prefix)) {
+        const seqPart = tag.replace(prefix, '');
+        const seq = parseInt(seqPart, 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+    const nextSeq = String(maxSeq + 1).padStart(2, '0');
+    return `${prefix}${nextSeq}`;
+  } catch (e) {
+    console.warn('generateAssetTag sequence error:', e);
+    return `${prefix}01`;
+  }
 }
 
 /**
@@ -225,13 +258,6 @@ function registerNewAsset(data) {
     // 逆引き用マッピング (プログラム用キー -> 予想される日本語ヘッダーの配列)
     const reverseMapping = {
       'id': ['ID', 'システム識別ID', 'id'],
-      'model_number': ['型番', 'model_number'],
-      'asset_tag': ['備品管理番号', '管理ID', 'asset_tag'],
-      'category_id': ['カテゴリ名', 'カテゴリID', 'category_id'],
-      'name': ['備品名称', '名称', 'name'],
-      'status': ['現在の状態', 'ステータス', 'status'],
-      'dept_id': ['管理部署名', '部署ID', 'dept_id'],
-      'floor': ['設置階', 'floor'],
       'location': ['設置場所', '場所', 'location'],
       'qr_token': ['QRアクセスキー', 'トークン', 'qr_token'],
       'manual_url': ['説明書リンク', 'マニュアルURL', 'manual_url'],
@@ -240,11 +266,12 @@ function registerNewAsset(data) {
       'price': ['購入金額', '価格', 'price'],
       'useful_life': ['耐用年数', 'useful_life'],
       'repair_vendor': ['修理依頼先', 'repair_vendor'],
-      'note': ['備考', 'note']
+      'note': ['備考', 'note'],
+      'category_code': ['カテゴリコード', 'カテゴリ', 'category_code']
     };
     
     // 備品管理番号を自動計算
-    data.asset_tag = generateAssetTag(data.category_id, data.purchase_date);
+    data.asset_tag = generateAssetTag(data.category_code, data.purchase_date);
     
     const insertData = { ...data, id: newId, qr_token: newToken, status: STATUS.ACTIVE };
 
@@ -307,25 +334,34 @@ function updateAsset(data) {
 
     // 逆引き用マッピング (プログラム用キー -> 予想される日本語ヘッダーの配列)
     const reverseMapping = {
-      'model_number': ['型番', 'model_number'],
       'asset_tag': ['備品管理番号', '管理ID', 'asset_tag'],
-      'category_id': ['カテゴリ名', 'カテゴリID', 'category_id'],
+      'category_code': ['カテゴリコード', 'カテゴリ', 'category_code'],
+      'maker': ['メーカー', 'maker'],
       'name': ['備品名称', '名称', 'name'],
-      'status': ['現在の状態', 'ステータス', 'status'],
-      'dept_id': ['管理部署名', '部署ID', 'dept_id'],
-      'floor': ['設置階', 'floor'],
+      'model_number': ['型番', 'model_number'],
+      'status': ['状態', '現在の状態', 'ステータス', 'status'],
+      'dept_id': ['管理部署', '管理部署名', '部署ID', 'dept_id'],
+      'floor': ['設置フロア', '設置階', 'floor'],
       'location': ['設置場所', '場所', 'location'],
+      'asset_class': ['資産区分', 'asset_class'],
       'manual_url': ['説明書リンク', 'マニュアルURL', 'manual_url'],
       'purchase_date': ['購入年月日', '購入日', 'purchase_date'],
       'vendor': ['購入業者', 'vendor'],
       'price': ['購入金額', '価格', 'price'],
       'useful_life': ['耐用年数', 'useful_life'],
       'repair_vendor': ['修理依頼先', 'repair_vendor'],
-      'note': ['備考', 'note']
+      'note': ['備考', 'note'],
+      'input_operator': ['入力担当者', '入力担当者名', 'input_operator']
     };
 
+    // 型番を半角大文字に正規化
+    if (data.model_number) data.model_number = String(data.model_number).toUpperCase().replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
     // 備品管理番号を自動計算で上書き
-    data.asset_tag = generateAssetTag(data.category_id, data.purchase_date);
+    data.asset_tag = generateAssetTag(data.category_code, data.purchase_date);
+    
+    // 入力担当者もデータに含める
+    if (data.operator) data.input_operator = data.operator;
 
     // 編集された項目のみを更新する
     headers.forEach((h, index) => {
@@ -337,6 +373,72 @@ function updateAsset(data) {
         }
       }
     });
+  } catch (e) {
+    // ...略
+  }
+}
+
+/**
+ * M_Listsシートから全てのマスタデータを取得
+ */
+function getMasterLists() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEETS.LISTS);
+    if (!sheet) return {};
+
+    const values = sheet.getDataRange().getValues();
+    const headers = values[0];
+    const data = {};
+
+    headers.forEach((h, i) => {
+      if (!h) return;
+      const list = [];
+      for (let r = 1; r < values.length; r++) {
+        const val = values[r][i];
+        if (val) list.push(val);
+      }
+      data[h] = list;
+    });
+
+    return data;
+  } catch (e) {
+    console.error('getMasterLists Error:', e.toString());
+    return {};
+  }
+}
+
+/**
+ * カテゴリマスタを階層構造で取得
+ * M_Categories シート (A:大分類, B:中分類, C:コード)
+ */
+function getCategoryMaster() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEETS.CATEGORIES);
+    if (!sheet) return {};
+
+    const values = sheet.getDataRange().getValues();
+    // ヘッダーを除外: 0:大分類, 1:中分類, 2:コード
+    const rows = values.slice(1);
+    
+    const master = {};
+    rows.forEach(row => {
+      const l1 = row[1]; // B列: L1
+      const l2 = row[2]; // C列: L2
+      const code = row[3]; // D列: コード
+      if (!l1 || !l2) return;
+
+      if (!master[l1]) master[l1] = [];
+      master[l1].push({ name: l2, code: code });
+    });
+
+    return master;
+  } catch (e) {
+    console.error('getCategoryMaster Error:', e.toString());
+    return {};
+  }
+}
     
     // 更新履歴を残す
     const historySheet = ss.getSheetByName(SHEETS.HISTORY);
