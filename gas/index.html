@@ -350,7 +350,29 @@
       setupEventListeners();
       
       const token = '<?= token ?>';
-      // ...（以下略）
+      const idStr = '<?= id ?>';
+      
+      if (token || idStr) {
+        // 特定の備品データを読み込み、直接単票フォームへ
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function(asset) {
+            if(!asset) {
+              showError('該当する備品が見つかりません。');
+              hideLoading();
+              return;
+            }
+            populateForm(asset);
+            switchView('form');
+            currentMode = 'edit';
+            hideLoading();
+          })
+          .withFailureHandler(handleServerError)
+          .getAssetData(token, idStr);
+      } else {
+        // 指定が無い場合: 全件取得してリストビューへ
+        fetchAllLists();
+      }
     };
 
     function setupEventListeners() {
@@ -464,31 +486,6 @@
         }
       }
     }
-      const token = '<?= token ?>';
-      const idStr = '<?= id ?>';
-      
-      if (token || idStr) {
-        // 特定の備品データを読み込み、直接単票フォームへ
-        showLoading();
-        google.script.run
-          .withSuccessHandler(function(asset) {
-            if(!asset) {
-              showError('該当する備品が見つかりません。');
-              hideLoading();
-              return;
-            }
-            populateForm(asset);
-            switchView('form');
-            currentMode = 'edit';
-            hideLoading();
-          })
-          .withFailureHandler(handleServerError)
-          .getAssetData(token, idStr);
-      } else {
-        // 指定が無い場合: 全件取得してリストビューへ
-        fetchAllLists();
-      }
-    };
 
     // --- [ Data Fetching ] ---
     function fetchAllLists() {
