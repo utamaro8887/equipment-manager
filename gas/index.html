@@ -405,7 +405,13 @@
         google.script.run
           .withSuccessHandler(function(asset) {
             if(!asset) {
-              showError('該当する備品が見つかりません。');
+              if (token) {
+                // トークンはあるが備品がない ＝ 空のQRコードからの新規登録
+                alert('未登録のQRコードです。新規登録画面を開きます。');
+                openNewForm(token);
+              } else {
+                showError('該当する備品が見つかりません。');
+              }
               hideLoading();
               return;
             }
@@ -587,10 +593,17 @@
     }
 
     // 新規フォームを開く
-    function openNewForm() {
+    function openNewForm(providedToken = null) {
       currentMode = 'new';
       document.getElementById('assetForm').reset();
       document.getElementById('f_operator').value = localStorage.getItem('lastOperator') || '';
+      
+      if (providedToken) {
+        document.getElementById('qrToken').value = providedToken;
+        document.getElementById('f_asset_tag').placeholder = 'スキャンしたQRコードと紐付けられます';
+      } else {
+        document.getElementById('qrToken').value = '';
+      }
       
       // 今日の日付セット
       const today = new Date();
@@ -845,7 +858,8 @@
         manual_url: document.getElementById('f_manual_url').value,
         note: document.getElementById('f_note').value,
         operator: document.getElementById('f_operator').value,
-        image_url: document.getElementById('f_image_url').value
+        image_url: document.getElementById('f_image_url').value,
+        qr_token: document.getElementById('qrToken').value
       };
     }
 

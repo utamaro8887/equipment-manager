@@ -10,6 +10,7 @@
  * 2026/03/24 報告直後の履歴が即時反映されない問題に対応 (flushの追加とリロード手法変更)。
  * 2026/03/24 T_Historyのデータ取得時、シートのヘッダー名に依存せず確実に画像URLを取得するよう修正。
  * 2026/03/24 報告画面に「報告者」項目を独立して追加し、台帳の入力担当者と分離・リンクするよう修正。
+ * 2026/03/24 未登録のQRトークン付きURLをスキャンした際、そのトークンで新規登録を開始する「空ラベル登録」ワークフローを実装。
  */
 
 const SPREADSHEET_ID = '1996BJT0IJoHYebMcoQaB0V6JNerrgnlyOCJOtUACT94';
@@ -281,8 +282,10 @@ function registerNewAsset(data) {
     
     // IDは行番号-1とする
     const newId = assetsSheet.getLastRow(); 
-    // 16文字のランダムな文字列をトークンとして生成
-    const newToken = Utilities.getUuid().replace(/-/g, '').substring(0, 16); 
+    
+    // トークンが指定されている（空のQRをスキャンして登録開始した）場合はそれを使用し、
+    // 無い場合は新規生成する
+    const newToken = data.qr_token || Utilities.getUuid().replace(/-/g, '').substring(0, 16); 
     
     // 逆引き用マッピング (プログラム用キー -> 予想される日本語ヘッダーの配列)
     const reverseMapping = {
