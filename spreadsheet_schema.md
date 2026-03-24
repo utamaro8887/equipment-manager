@@ -23,6 +23,7 @@
 | P | 入力担当者名 | `input_operator` | 入力担当者名 |
 | Q | 耐用年数 | `useful_life` | (任意追加) |
 | R | 修理依頼先 | `repair_vendor` | (任意追加) |
+| S | 画像URL | `image_url` | 備品の画像URL |
 
 ## T_History シート (Sheet Name: T_History)
 点検や修理、移動などのイベントを記録する履歴テーブルです。
@@ -34,6 +35,7 @@
 | C | 報告種別 | `type` | 修理\|移動\|点検\|廃棄\|その他\|棚卸 |
 | D | 担当者名 | `operator` | 報告を行った職員名 (自己申告) |
 | E | 備考・メモ | `note` | 自由記述（「：なし」はこの項目の内容を表示） |
+| F | 画像URL | `image_url` | 報告時の画像URL |
 
 ## マスタシート (M_Depts / M_Categories)
 将来的な正規化（名称変更への耐性強化）のためのマスタ構成です。

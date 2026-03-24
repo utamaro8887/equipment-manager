@@ -1,9 +1,27 @@
 /**
  * システム設計仕様書に基づいた備品管理バックエンド
  * 2026/03/16 刷新
+ * 2026/03/24 画像アップロード機能(uploadImage)およびimage_urlのマッピングを追加。認証用関数(setupPermissions)を追加。
+ * 2026/03/24 画像の遅延アップロード（フォーム送信時に一括保存）およびサムネイルURL取得方式への変更。
+ * 2026/03/24 報告フォーム送信後の無限ローディングバグを修正 (型安全なID比較)。
+ * 2026/03/24 備品登録・台帳更新後にリスト画面ではなく、該当備品の詳細画面へ戻るよう挙動を変更。
+ * 2026/03/24 台帳・報告画面の画像アップロード項目のレイアウト位置を調整。
+ * 2026/03/24 メンテナンス履歴の項目クリック時に詳細画面（拡大画像含む）をポップアップ表示する機能を追加。
+ * 2026/03/24 報告直後の履歴が即時反映されない問題に対応 (flushの追加とリロード手法変更)。
+ * 2026/03/24 T_Historyのデータ取得時、シートのヘッダー名に依存せず確実に画像URLを取得するよう修正。
+ * 2026/03/24 報告画面に「報告者」項目を独立して追加し、台帳の入力担当者と分離・リンクするよう修正。
  */
 
 const SPREADSHEET_ID = '1996BJT0IJoHYebMcoQaB0V6JNerrgnlyOCJOtUACT94';
+
+/**
+ * 初回のみ実行してください（Google Drive等の認証ポップアップを強制的に出すための関数です）
+ */
+function setupPermissions() {
+  SpreadsheetApp.openById(SPREADSHEET_ID);
+  DriveApp.createFolder('DummyAuthFolder').setTrashed(true);
+  console.log("認証が正常に完了しました。");
+}
 
 // シート定数
 const SHEETS = {
@@ -89,17 +107,27 @@ function getAssetData(token, id) {
     // 2. 履歴データの取得 (T_History)
     const historySheet = ss.getSheetByName(SHEETS.HISTORY);
     if (!historySheet) throw new Error('Sheet "' + SHEETS.HISTORY + '" not found');
-    const allHistory = getSheetDataAsObjects(historySheet);
     
-    // 該当備品の履歴を抽出して日付降順に
-    const history = allHistory
-      .map(h => normalizeKeys(h, 'HISTORY'))
-      .filter(h => h.asset_id === asset.id)
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .map(h => ({
-        ...h,
-        timestamp: formatDate(h.timestamp)
-      }));
+    // T_History は確実に固定順序で書き込まれるため、ユーザー側のヘッダー名に依存しないインデックスベースで取得する
+    // A:日時, B:備品ID, C:種別, D:担当者, E:メモ, F:画像URL
+    const hData = historySheet.getDataRange().getValues();
+    const history = [];
+    for (let i = 1; i < hData.length; i++) {
+      const row = hData[i];
+      if (String(row[1]) === String(asset.id)) {
+        history.push({
+          timestamp: formatDate(row[0]),
+          asset_id: row[1],
+          type: row[2] || '',
+          operator: row[3] || '',
+          note: row[4] || '',
+          image_url: row[5] || ''
+        });
+      }
+    }
+    
+    // 日付降順にソート
+    history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     asset.history = history;
     asset.purchase_date = formatDate(asset.purchase_date);
@@ -133,6 +161,7 @@ function normalizeKeys(obj, type) {
       '購入金額': 'price', '価格': 'price', 'price': 'price',
       '耐用年数': 'useful_life', 'useful_life': 'useful_life',
       '修理依頼先': 'repair_vendor', 'repair_vendor': 'repair_vendor',
+      '画像URL': 'image_url', 'image_url': 'image_url',
       '備考': 'note', 'note': 'note',
       '入力担当者': 'input_operator', '入力担当者名': 'input_operator', 'input_operator': 'input_operator'
     },
@@ -141,6 +170,7 @@ function normalizeKeys(obj, type) {
       '対象備品ID': 'asset_id', '備品ID': 'asset_id', 'asset_id': 'asset_id',
       '報告種別': 'type', '種別': 'type', 'type': 'type',
       '登録者名': 'operator', '担当者名': 'operator', '担当者': 'operator', 'operator': 'operator',
+      '画像URL': 'image_url', 'image_url': 'image_url',
       '備考・メモ': 'note', '備考': 'note', 'note': 'note'
     }
   };
@@ -178,7 +208,8 @@ function getAssetList() {
                    dept_id: a.dept_id,
                    floor: a.floor,
                    location: a.location,
-                   qr_token: a.qr_token
+                   qr_token: a.qr_token,
+                   image_url: a.image_url
                  }));
   } catch (e) {
     console.error('getAssetList Error:', e.toString());
@@ -271,12 +302,26 @@ function registerNewAsset(data) {
       'price': ['購入金額', '価格', 'price'],
       'useful_life': ['耐用年数', 'useful_life'],
       'repair_vendor': ['修理依頼先', 'repair_vendor'],
+      'image_url': ['画像URL', 'image_url'],
       'note': ['備考', 'note'],
       'input_operator': ['入力担当者', '入力担当者名', 'input_operator']
     };
     
     // 備品管理番号を自動計算
     data.asset_tag = generateAssetTag(data.category_code, data.purchase_date);
+    
+    // 画像データ(DataURL)が含まれていればGoogle Driveにアップロード
+    if (data.image_url && String(data.image_url).startsWith('data:image')) {
+      const uploadRes = uploadImage(data.image_url, data.asset_tag + "_image.jpg");
+      if (uploadRes.success) {
+        data.image_url = uploadRes.url;
+      } else {
+        data.image_url = ''; // アップロード失敗時は空にする
+      }
+    }
+    
+    // 入力担当者もデータに含める
+    if (data.operator) data.input_operator = data.operator;
     
     const insertData = { ...data, id: newId, qr_token: newToken, status: STATUS.ACTIVE };
 
@@ -299,9 +344,11 @@ function registerNewAsset(data) {
       newId,
       '点検', // 登録という種別がないため初期点検相当とする
       insertData.operator || 'システム',
-      '新規登録'
+      '新規登録',
+      insertData.image_url || ''
     ]);
     
+    SpreadsheetApp.flush(); // 即時反映
     return { success: true, token: newToken };
   } catch (e) {
     console.error('registerNewAsset Error:', e);
@@ -353,12 +400,21 @@ function updateAsset(data) {
       'price': ['購入金額', '価格', 'price'],
       'useful_life': ['耐用年数', 'useful_life'],
       'repair_vendor': ['修理依頼先', 'repair_vendor'],
+      'image_url': ['画像URL', 'image_url'],
       'note': ['備考', 'note'],
       'input_operator': ['入力担当者', '入力担当者名', 'input_operator']
     };
 
     // 型番を半角大文字に正規化
     if (data.model_number) data.model_number = String(data.model_number).toUpperCase().replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+    // 画像データ(DataURL)が含まれていればGoogle DriveにアップロードしてURLを差し替え
+    if (data.image_url && String(data.image_url).startsWith('data:image')) {
+      const uploadRes = uploadImage(data.image_url, (data.asset_tag || data.id) + "_image.jpg");
+      if (uploadRes.success) {
+        data.image_url = uploadRes.url;
+      }
+    }
 
     // 入力担当者もデータに含める
     if (data.operator) data.input_operator = data.operator;
@@ -381,9 +437,11 @@ function updateAsset(data) {
       data.id,
       '点検', // マスタ修正のため点検扱い
       data.operator || 'システム',
-      '台帳情報修正'
+      '台帳情報修正',
+      ''
     ]);
     
+    SpreadsheetApp.flush(); // 即時反映
     return { success: true };
   } catch (e) {
     console.error('updateAsset Error:', e);
@@ -469,6 +527,16 @@ function registerReport(data) {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const now = new Date();
 
+    // 画像データ(DataURL)が含まれていればGoogle Driveにアップロード
+    if (data.image_url && String(data.image_url).startsWith('data:image')) {
+      const uploadRes = uploadImage(data.image_url, data.asset_id + "_report.jpg");
+      if (uploadRes.success) {
+        data.image_url = uploadRes.url;
+      } else {
+        data.image_url = '';
+      }
+    }
+
     // 1. T_Historyへの追記
     const historySheet = ss.getSheetByName(SHEETS.HISTORY);
     historySheet.appendRow([
@@ -476,8 +544,11 @@ function registerReport(data) {
       data.asset_id,
       data.type,
       data.operator,
-      data.note || ''
+      data.note || '',
+      data.image_url || ''
     ]);
+    
+    SpreadsheetApp.flush(); // 即時反映
 
     // 2. T_Assetsの更新 (ステータス、場所など)
     const assetsSheet = ss.getSheetByName(SHEETS.ASSETS);
@@ -507,6 +578,7 @@ function registerReport(data) {
       }
     }
 
+    SpreadsheetApp.flush(); // T_Assets更新後も即時反映
     return { success: true };
 
   } catch (e) {
@@ -549,3 +621,49 @@ function formatDate(date) {
   if (!(date instanceof Date) || isNaN(date)) return date;
   return Utilities.formatDate(date, "JST", "yyyy/MM/dd HH:mm");
 }
+
+/**
+ * 画像データをGoogle Driveの Equipment_Images フォルダに保存し、公開URLを返す
+ * @param {string} dataURI - Base64エンコードされたData URI (例: data:image/jpeg;base64,... )
+ * @param {string} filename - 保存するファイル名
+ */
+function uploadImage(dataURI, filename) {
+  try {
+    const folderName = "Equipment_Images";
+    const folders = DriveApp.getFoldersByName(folderName);
+    let folder;
+    if (folders.hasNext()) {
+      folder = folders.next();
+    } else {
+      folder = DriveApp.createFolder(folderName);
+      folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    }
+    
+    // DataURIの解析
+    const parts = dataURI.split(',');
+    if (parts.length < 2) throw new Error("不正な画像データです。");
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const base64Data = parts[1];
+    
+    const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, filename);
+    const file = folder.createFile(blob);
+    
+    // ファイル自体も誰でも閲覧可能に設定
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch(shareErr) {
+      console.warn("Sharing setting failed on file:", shareErr);
+    }
+    
+    // 表示用URLの取得 (確実に表示させるためのthumbnailエンドポイントを利用)
+    const id = file.getId();
+    const viewUrl = "https://drive.google.com/thumbnail?id=" + id + "&sz=w800";
+    
+    return { success: true, url: viewUrl, id: id };
+  } catch(e) {
+    console.error("uploadImage Error:", e.toString());
+    return { success: false, error: e.toString() };
+  }
+}
+
