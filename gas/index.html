@@ -1,379 +1,619 @@
+<!--
+ * システム設計仕様書に基づいた備品管理フロントエンド
+ * 2026/03/25 UI変更: 報告モーダル等の表示項目（ID表示、入力の非活性化など）の微調整。
+ * 2026/03/25 バグ修正: 新規登録後に処理中画面から戻らない不具合（ID未返却）を修正。
+ * 2026/03/25 機能修正: 備品管理番号の連番下桁をT_Assets側のIDと連動するよう修正。
+ * 2026/03/25 バグ修正: 登録画像がサムネイルに表示されない不具合の対応（画像表示APIの変更）。
+ * 2026/03/25 報告履歴の改善: 履歴詳細モーダルでの画像表示と「報告者」ラベルへの修正。
+ * 2026/03/25 UI改善: モーダルのスクロール対応、画像サイズ制限、背面スクロール禁止の実装。
+-->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>病院備品管理システム</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-  <style>
-    body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>病院備品管理システム</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     
-    /* ローディングオーバーレイ */
-    #loading-view { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 2000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    
-    /* リストビュー */
-    .status-badge { padding: 5px 10px; border-radius: 12px; font-weight: bold; font-size: 0.8rem; }
-    .bg-active { background-color: #e7f5ff; color: #007bff; }
-    .bg-faulty { background-color: #fff5f5; color: #fa5252; }
-    .bg-spare { background-color: #fef9e7; color: #f1c40f; }
-    .bg-disposed { background-color: #f1f3f5; color: #868e96; }
-    .asset-list-card { border-radius: 10px; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.2s; cursor: pointer; }
-    .asset-list-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    
-    /* フォームビュー */
-    .form-card { border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; }
-    .action-btn { border-radius: 10px; font-weight: bold; }
-    .timeline { position: relative; padding-left: 30px; }
-    .timeline::before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0; width: 2px; background: #e9ecef; }
-    .timeline-item { position: relative; margin-bottom: 20px; }
-    .timeline-marker { position: absolute; left: -22px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: #007bff; border: 2px solid #fff; }
-    
-    /* 非表示用クラス */
-    .d-none-custom { display: none !important; }
-  </style>
+    <script id="tailwind-config">
+          tailwind.config = {
+            darkMode: "class",
+            theme: {
+              extend: {
+                colors: {
+                  "surface-container-high": "#e7e8e9", "secondary-fixed-dim": "#c7c6ca", "on-secondary-fixed-variant": "#46474a", "primary-fixed-dim": "#adc6ff", "primary": "#0058bd", "on-secondary": "#ffffff", "on-surface": "#191c1d", "primary-container": "#2771df", "on-tertiary-fixed-variant": "#41474f", "surface-tint": "#005ac1", "on-surface-variant": "#424753", "surface-dim": "#d9dadb", "inverse-primary": "#adc6ff", "outline-variant": "#c2c6d5", "on-tertiary-fixed": "#161c23", "surface-bright": "#f8f9fa", "on-tertiary-container": "#fdfcff", "on-primary": "#ffffff", "on-primary-container": "#fefcff", "surface-variant": "#e1e3e4", "on-primary-fixed-variant": "#004494", "tertiary-container": "#6f757e", "tertiary-fixed-dim": "#c1c7d1", "on-error-container": "#93000a", "on-secondary-fixed": "#1a1b1e", "surface-container-highest": "#e1e3e4", "inverse-surface": "#2e3132", "background": "#f8f9fa", "tertiary": "#565d65", "error-container": "#ffdad6", "on-secondary-container": "#646468", "on-error": "#ffffff", "secondary": "#5e5e62", "surface": "#f8f9fa", "surface-container": "#edeeef", "on-background": "#191c1d", "on-primary-fixed": "#001a41", "tertiary-fixed": "#dde3ed", "surface-container-lowest": "#ffffff", "outline": "#727785", "secondary-container": "#e3e2e6", "surface-container-low": "#f3f4f5", "on-tertiary": "#ffffff", "inverse-on-surface": "#f0f1f2", "error": "#ba1a1a", "secondary-fixed": "#e3e2e6", "primary-fixed": "#d8e2ff"
+                },
+                fontFamily: { "headline": ["Plus Jakarta Sans"], "body": ["Inter"], "label": ["Inter"] },
+                borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+              },
+            },
+          }
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle;}
+        body { background-color: #f8f9fa; color: #191c1d; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; min-height: max(884px, 100dvh); }
+        .hidden-view { display: none !important; }
+        
+        /* Loading overlay */
+        #loading-view { position: fixed; inset: 0; background: rgba(255,255,255,0.85); backdrop-filter: blur(4px); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .spinner { border: 4px solid #e3e2e6; border-top: 4px solid #0058bd; border-radius: 50%; width: 44px; height: 44px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Error Alert Dropdown */
+        #error-alert { transition: transform 0.3s ease-out; transform: translateY(-150%); }
+        #error-alert.show-alert { transform: translateY(0); }
+    </style>
 </head>
-<body>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
 
   <!-- LOADING VIEW -->
-  <div id="loading-view">
-    <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
-    <div class="text-muted fw-bold">通信中...</div>
+  <div id="loading-view" class="hidden-view">
+    <div class="spinner mb-4"></div>
+    <div class="text-on-surface-variant font-bold text-sm tracking-widest uppercase">処理中...</div>
   </div>
 
   <!-- ERROR ALERT -->
-  <div id="error-alert" class="container mt-3 d-none-custom">
-    <div class="alert alert-danger shadow-sm alert-dismissible fade show" role="alert">
-      <span id="error-message"></span>
-      <button type="button" class="btn-close" onclick="document.getElementById('error-alert').classList.add('d-none-custom')"></button>
+  <div id="error-alert" class="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-error-container text-on-error-container px-5 py-4 rounded-2xl shadow-[0_12px_32px_-4px_rgba(186,26,26,0.2)] z-[10000] flex justify-between items-start">
+    <div class="flex items-start gap-3">
+      <span class="material-symbols-outlined text-error">error</span>
+      <span id="error-message" class="text-sm font-semibold leading-relaxed"></span>
     </div>
+    <button onclick="document.getElementById('error-alert').classList.remove('show-alert')" class="text-on-error-container/60 hover:text-on-error-container transition-colors">
+      <span class="material-symbols-outlined text-lg">close</span>
+    </button>
   </div>
 
   <!-- LIST VIEW -->
-  <div id="list-view" class="container py-4 pb-5 d-none-custom">
-    <div class="d-flex justify-content-between align-items-center mb-4 sticky-top bg-light py-2" style="z-index: 1000;">
-      <h2 class="h4 mb-0 fw-bold text-primary"><i class="bi bi-box-seam me-2"></i>備品台帳</h2>
-      <button class="btn btn-primary shadow-sm rounded-pill px-3" onclick="openNewForm()">
-        <i class="bi bi-plus-lg me-1"></i>新規登録
-      </button>
-    </div>
-
-    <!-- 検索フィルター -->
-    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
-      <div class="card-body p-2 px-3">
-        <div class="input-group">
-          <span class="input-group-text bg-white border-0"><i class="bi bi-search text-muted"></i></span>
-          <input type="text" id="searchInput" class="form-control border-0 shadow-none ps-0" placeholder="名称、管理番号で探す..." onkeyup="filterList()">
+  <div id="list-view" class="hidden-view">
+    <!-- TopAppBar -->
+    <header class="fixed top-0 left-0 w-full z-40 bg-white/85 backdrop-blur-2xl shadow-[0_12px_32px_-4px_rgba(0,88,189,0.06)]">
+      <div class="flex items-center justify-between px-6 py-4 max-w-full">
+        <div class="flex items-center gap-4">
+          <button class="text-[#424753] hover:bg-[#f3f4f5] rounded-full transition-all active:scale-95 duration-200 ease-in-out p-2">
+            <span class="material-symbols-outlined">inventory_2</span>
+          </button>
+          <h1 class="font-['Plus_Jakarta_Sans'] font-bold text-lg tracking-tight text-[#191c1d]">備品台帳</h1>
         </div>
       </div>
-    </div>
+    </header>
 
-    <div id="listContainer" class="row g-3">
-      <!-- 備品カードが動的に追加されます -->
-    </div>
-    <div id="noResult" class="text-center text-muted mt-5 d-none-custom">
-      <i class="bi bi-folder-x fs-1 d-block mb-3"></i>
-      一致する備品が見つかりません。
-    </div>
+    <main class="pt-24 pb-32 px-6 max-w-4xl mx-auto">
+      <!-- Search Section -->
+      <section class="mb-10">
+        <div class="relative w-full">
+          <div class="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+            <span class="material-symbols-outlined text-on-surface-variant/60">search</span>
+          </div>
+          <input id="searchInput" onkeyup="filterList()" class="w-full bg-surface-container-lowest border-none rounded-full py-4 pl-14 pr-6 text-on-surface shadow-[0_12px_32px_-4px_rgba(0,88,189,0.06)] focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-on-surface-variant/40 font-body" placeholder="名称、管理番号、設置階で探す..." type="text"/>
+        </div>
+      </section>
+
+      <!-- Stats Row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10" id="statsContainer">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- List Container -->
+      <div id="listContainer" class="space-y-6">
+        <!-- Asset Cards will be dynamically inserted here -->
+      </div>
+
+      <div id="noResult" class="text-center text-on-surface-variant mt-16 hidden-view">
+        <span class="material-symbols-outlined text-6xl mb-4 opacity-50">search_off</span>
+        <p class="font-bold">一致する備品が見つかりません。</p>
+      </div>
+    </main>
+
+    <!-- Floating Action Button -->
+    <button onclick="openNewForm()" class="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary shadow-lg flex items-center justify-center active:scale-90 transition-all duration-150 z-50 md:bottom-10">
+      <span class="material-symbols-outlined text-[28px]">add</span>
+    </button>
+    <!-- BottomNavBar -->
+    <nav class="fixed bottom-0 left-0 w-full z-50 rounded-t-3xl bg-white/85 backdrop-blur-2xl shadow-[0_-8px_24px_-4px_rgba(0,88,189,0.04)] md:hidden">
+      <div class="flex justify-around items-center w-full px-4 pt-3 pb-8">
+        <a class="flex flex-col items-center justify-center bg-[#d8e2ff] text-[#004494] rounded-2xl px-6 py-2 active:scale-90 duration-150 ease-out" href="#">
+          <span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+          <span class="font-['Inter'] font-medium text-[11px] uppercase tracking-wider">Inventory</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-[#424753] px-6 py-2 hover:text-[#0058bd] transition-colors active:scale-90 duration-150 ease-out" href="#" onclick="alert('スキャン機能は現在準備中です。');">
+          <span class="material-symbols-outlined mb-1">qr_code_scanner</span>
+          <span class="font-['Inter'] font-medium text-[11px] uppercase tracking-wider">Scan</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-[#424753] px-6 py-2 hover:text-[#0058bd] transition-colors active:scale-90 duration-150 ease-out" href="#" onclick="alert('設定機能は現在準備中です。');">
+          <span class="material-symbols-outlined mb-1">settings</span>
+          <span class="font-['Inter'] font-medium text-[11px] uppercase tracking-wider">Settings</span>
+        </a>
+      </div>
+    </nav>
   </div>
 
-
-  <!-- FORM VIEW (単票フォーム) -->
-  <div id="form-view" class="container py-4 pb-5 d-none-custom">
-    <div class="d-flex align-items-center mb-4 sticky-top bg-light py-2" style="z-index: 1000;">
-      <button class="btn btn-sm btn-outline-secondary rounded-circle me-3" style="width: 36px; height:36px;" onclick="showList()">
-        <i class="bi bi-arrow-left"></i>
+  <!-- DETAIL VIEW -->
+  <div id="detail-view" class="hidden-view">
+    <header class="fixed top-0 left-0 w-full z-40 bg-white/85 backdrop-blur-2xl shadow-[0_12px_32px_-4px_rgba(0,88,189,0.06)] flex items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-4">
+        <button onclick="showList()" class="hover:bg-[#f3f4f5] rounded-full transition-all p-2 active:scale-95 duration-200">
+          <span class="material-symbols-outlined text-[#0058bd]">arrow_back</span>
+        </button>
+        <h1 class="font-['Plus_Jakarta_Sans'] font-bold text-lg tracking-tight text-[#191c1d]">台帳詳細</h1>
+      </div>
+      <button onclick="openEditForm()" class="hover:bg-[#f3f4f5] rounded-full transition-all px-4 py-2 active:scale-95 duration-200 text-[#0058bd] font-headline font-semibold flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">edit</span>
+        <span>修正</span>
       </button>
-      <h2 class="h4 mb-0 fw-bold" id="formTitle">備品詳細</h2>
+    </header>
+
+    <main class="pt-24 px-4 pb-32 md:px-0 max-w-2xl mx-auto space-y-6">
       
-      <!-- 既存データ時のみ表示される報告ボタン等 -->
-      <div class="ms-auto" id="editActions" style="display:none;">
-        <button class="btn btn-sm btn-warning shadow-sm text-dark" onclick="openReportModal()">
-          <i class="bi bi-flag me-1"></i>報告
+      <!-- Hidden IDs -->
+      <input type="hidden" id="d_assetId">
+      <input type="hidden" id="d_qrToken">
+      
+      <!-- Hero Image Section -->
+      <section class="relative aspect-square md:aspect-video w-full rounded-xl overflow-hidden shadow-sm bg-surface-container-low flex items-center justify-center border border-outline-variant/20">
+        <img id="d_image" src="" alt="Asset Image" class="w-full h-full object-contain bg-white">
+        <!-- Status Badge -->
+        <div class="absolute top-4 right-4">
+          <span id="d_status_badge" class="bg-[#d8e2ff] text-[#004494] px-3 py-1 rounded-sm text-xs font-semibold tracking-wider uppercase shadow-sm">
+            Status
+          </span>
+        </div>
+      </section>
+
+      <!-- Primary Information Card -->
+      <section class="bg-surface-container-lowest p-6 rounded-xl space-y-2 border border-outline-variant/10 shadow-sm">
+        <div class="flex justify-between items-start">
+          <h2 id="d_name" class="font-headline font-extrabold text-2xl tracking-tight text-on-surface">Item Name</h2>
+        </div>
+        <div class="flex items-center gap-2 text-on-surface-variant font-medium text-sm">
+          <span class="material-symbols-outlined text-sm">fingerprint</span>
+          <span id="d_asset_tag">ID</span>
+        </div>
+      </section>
+
+      <!-- Details Grid -->
+      <section class="space-y-4">
+        <h3 class="font-headline font-bold text-lg px-2 text-on-surface">資産情報・プロパティ</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-outline-variant/10">
+            <span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">カテゴリー / 区分</span>
+            <span id="d_category" class="text-on-surface font-semibold text-base mb-1">Category</span>
+            <span id="d_class" class="text-on-surface font-semibold text-base">Class</span>
+          </div>
+          
+          <div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-outline-variant/10">
+            <span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">型番</span>
+            <span id="d_model" class="text-on-surface font-semibold text-base">Model</span>
+          </div>
+
+          <div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-outline-variant/10">
+            <span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">設置場所</span>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="material-symbols-outlined text-primary text-sm">location_on</span>
+              <span id="d_location" class="text-on-surface font-semibold text-base">Location</span>
+            </div>
+          </div>
+
+          <div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-outline-variant/10">
+            <span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">購入日 / 金額</span>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="material-symbols-outlined text-on-surface-variant text-sm">event</span>
+              <span id="d_purchase" class="text-on-surface font-semibold text-base">Date / Price</span>
+            </div>
+          </div>
+          
+          <div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-outline-variant/10">
+            <span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">耐用年数</span>
+             <span id="d_life" class="text-[#0058bd] font-semibold text-base mt-1">Life Years</span>
+          </div>
+
+          <div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-outline-variant/10">
+            <span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">購入業者 / 修理窓口</span>
+            <span id="d_vendors" class="text-on-surface font-semibold text-base mt-1 line-clamp-2">Vendors</span>
+          </div>
+
+          <div class="bg-surface-container-lowest p-5 rounded-xl flex justify-between items-center shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-outline-variant/10 md:col-span-2">
+            <div>
+              <span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">説明書</span>
+              <p id="d_manual_text" class="text-on-surface font-semibold mt-1">PDF等</p>
+            </div>
+            <a href="#" id="d_manual_link" target="_blank" class="hidden-view p-3 bg-primary-fixed text-primary rounded-full hover:bg-primary-container hover:text-on-primary transition-colors">
+              <span class="material-symbols-outlined">menu_book</span>
+            </a>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- History and Notes -->
+      <section class="space-y-4">
+        <h3 class="font-headline font-bold text-lg px-2 text-on-surface">履歴・備考</h3>
+        <div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border border-outline-variant/10">
+          <div class="p-5 border-b border-surface-container-low">
+            <span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">備考</span>
+            <p id="d_note" class="text-on-surface-variant text-sm mt-3 leading-relaxed whitespace-pre-wrap">Notes...</p>
+          </div>
+          
+          <div class="p-5 bg-surface-bright">
+            <div class="flex justify-between items-center mb-4">
+              <span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">メンテナンス履歴</span>
+              <button onclick="openReportModal()" class="text-xs font-bold text-primary bg-primary-fixed/50 px-3 py-1 rounded-full hover:bg-primary-fixed transition-colors">
+                + 新規報告
+              </button>
+            </div>
+            
+            <div id="d_timeline" class="space-y-4 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-outline-variant/30 before:to-transparent">
+              <!-- Timeline items injected here -->
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <div class="md:hidden pt-4 pb-8">
+        <button onclick="alert('QRコード印刷機能は準備中です。')" class="w-full bg-gradient-to-br from-[#0058bd] to-[#2771df] text-white rounded-full py-4 px-6 font-headline font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 transition-all">
+          <span class="material-symbols-outlined">qr_code_2</span>
+          <span>QRコード印刷</span>
         </button>
       </div>
-    </div>
 
-    <div class="card form-card p-4">
-      <form id="assetForm">
-        <!-- 内部ID保持用 -->
+    </main>
+  </div>
+
+  <!-- FORM VIEW (NEW/EDIT) -->
+  <!-- FORM VIEW (NEW/EDIT) -->
+  <div id="form-view" class="hidden-view">
+    <header class="fixed top-0 left-0 w-full z-50 bg-white/85 backdrop-blur-2xl flex items-center justify-between px-6 py-4 max-w-full shadow-[0_12px_32px_-4px_rgba(0,88,189,0.06)]">
+      <div class="flex items-center gap-4">
+        <button onclick="closeForm()" class="p-2 hover:bg-[#f3f4f5] rounded-full transition-all active:scale-95 duration-200 ease-in-out text-[#424753]">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+        <h1 id="formTitle" class="font-['Plus_Jakarta_Sans'] font-bold text-lg tracking-tight text-[#191c1d]">新規登録</h1>
+      </div>
+      <div class="flex items-center gap-2" id="editActions" style="display:none;">
+         <button onclick="openReportModal()" class="text-[#0058bd] font-headline font-bold text-sm px-4 py-2 hover:bg-[#f3f4f5] rounded-full transition-all active:scale-95 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">flag</span>報告
+         </button>
+      </div>
+    </header>
+
+    <main class="pt-24 px-6 pb-40 max-w-2xl mx-auto">
+      <section class="mb-10">
+        <p class="text-on-surface-variant font-body text-sm mb-2" id="formSubtitle">New Item Entry</p>
+        <h2 class="text-3xl font-headline font-extrabold text-on-surface tracking-tight" id="formMainTitle">新しい備品を台帳に追加する</h2>
+      </section>
+
+      <form id="assetForm" class="space-y-10">
         <input type="hidden" id="assetId">
         <input type="hidden" id="qrToken">
 
-        <!-- ステータス表示（既存専用） -->
-        <div id="statusHeader" class="mb-4 d-flex justify-content-between align-items-center" style="display:none;">
-          <span class="text-muted small fw-bold">現在のステータス</span>
-          <select class="form-select form-select-sm w-auto fw-bold" id="f_status">
-            <option value="稼働中">稼働中</option>
-            <option value="予備">予備</option>
-            <option value="故障中">故障中</option>
-            <option value="廃棄待">廃棄待</option>
-            <option value="廃棄済">廃棄済</option>
-          </select>
-        </div>
-
-        <h5 class="fw-bold mb-3 border-bottom pb-2">基本情報</h5>
-        
-
-
-        <div class="mb-3">
-          <label class="form-label small fw-bold text-muted">管理番号 <span class="badge bg-secondary font-monospace ms-1">自動採番</span></label>
-          <input type="text" class="form-control fw-bold fs-4 text-primary font-monospace" id="f_asset_tag" placeholder="保存時に連番付きで自動採番されます" disabled>
-        </div>
-        
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">備品名称 <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="f_name" required placeholder="例: 車椅子(標準型)">
+        <div class="flex flex-col md:flex-row gap-8 items-start">
+          <div class="w-full md:w-1/3 aspect-square bg-surface-container-low rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 group cursor-pointer hover:border-primary/40 transition-colors overflow-hidden relative" onclick="document.getElementById('f_image_file').click()">
+            <img id="f_image_preview" src="" class="absolute inset-0 w-full h-full object-cover hidden-view z-10">
+            <div id="f_image_placeholder" class="text-center p-6 z-0 flex flex-col items-center">
+              <span class="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-primary transition-colors">add_a_photo</span>
+              <p class="mt-2 text-xs font-label text-on-surface-variant group-hover:text-primary">画像を添付</p>
+            </div>
           </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">型番・品番 <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-upc"></i></span>
-              <input type="text" class="form-control" id="f_model_number" required placeholder="例: NA-VD110L">
+          <input type="file" id="f_image_file" accept="image/*" class="hidden" onchange="resizeAndPreviewImage(this, 'f_image')">
+          <input type="hidden" id="f_image_url">
+
+          <div class="flex-1 w-full space-y-6">
+            <div class="space-y-2">
+              <label class="block text-sm font-headline font-bold text-on-surface ml-1">アイテム名 <span class="text-error">*</span></label>
+              <input id="f_name" required class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface placeholder:text-outline transition-all shadow-sm" placeholder="例: 車椅子(標準型)" type="text"/>
+            </div>
+            
+            <div class="space-y-2" id="statusHeader" style="display:none;">
+              <label class="block text-sm font-headline font-bold text-on-surface ml-1">ステータス <span class="text-error">*</span></label>
+              <div class="relative group">
+                <select id="f_status" class="appearance-none w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 pr-10 text-on-surface shadow-sm cursor-pointer transition-all">
+                  <option value="稼働中">稼働中</option>
+                  <option value="予備">予備</option>
+                  <option value="故障中">故障中</option>
+                  <option value="廃棄待">廃棄待</option>
+                  <option value="廃棄済">廃棄済</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">check_circle</span>
+              </div>
             </div>
           </div>
         </div>
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">カテゴリ (大分類) <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-tags"></i></span>
-              <select class="form-select" id="f_category_l1" required onchange="onCategoryL1Change()">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-surface-container-low rounded-3xl">
+          <div class="space-y-2">
+            <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">管理番号</label>
+            <input id="f_asset_tag" disabled class="w-full bg-surface-container-lowest/50 border-none ring-1 ring-outline-variant/20 rounded-xl px-4 py-4 text-on-surface shadow-sm font-monospace text-sm" placeholder="自動採番" type="text"/>
+          </div>
+          
+          <div class="space-y-2">
+            <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">型番・品番 <span class="text-error">*</span></label>
+            <input id="f_model_number" required class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm placeholder:text-outline transition-all font-monospace" placeholder="例: NA-VD110L" type="text"/>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">大分類 <span class="text-error">*</span></label>
+            <div class="relative group">
+              <select id="f_category_l1" required onchange="onCategoryL1Change()" class="appearance-none w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 pr-10 text-on-surface shadow-sm cursor-pointer transition-all">
+                <option value="">選択...</option>
+              </select>
+              <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+            </div>
+          </div>
+          
+          <div class="space-y-2">
+            <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">中分類 <span class="text-error">*</span></label>
+            <div class="relative group">
+              <select id="f_category_l2" required disabled onchange="onCategoryL2Change()" class="appearance-none w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 pr-10 text-on-surface shadow-sm cursor-pointer transition-all disabled:opacity-50">
                 <option value="">大分類を選択...</option>
               </select>
+              <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
             </div>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">カテゴリ (中分類) <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <select class="form-select" id="f_category_l2" required disabled onchange="onCategoryL2Change()">
-                <option value="">先に大分類を選択...</option>
-              </select>
-            </div>
-            <!-- 内部的にはコードを保持して送信する -->
             <input type="hidden" id="f_category_code" name="category_code">
           </div>
-        </div>
 
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">設置階</label>
-            <select class="form-select" id="f_floor">
-              <option value="">選択してください...</option>
-            </select>
+          <div class="space-y-2">
+            <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">設置階</label>
+            <div class="relative group">
+              <select id="f_floor" class="appearance-none w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 pr-10 text-on-surface shadow-sm cursor-pointer transition-all">
+                <option value="">選択してください...</option>
+              </select>
+              <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+            </div>
           </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">設置場所</label>
-            <input type="text" class="form-control" id="f_location" list="locList" placeholder="ナースST">
+          
+          <div class="space-y-2">
+            <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">設置場所</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">location_on</span>
+              <input id="f_location" list="locList" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl pl-12 pr-4 py-4 text-on-surface shadow-sm placeholder:text-outline transition-all" placeholder="例: ナースST" type="text"/>
+            </div>
             <datalist id="locList"></datalist>
           </div>
-        </div>
+          
+          <div class="space-y-2">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">担当者 <span class="text-error">*</span></label>
+             <input id="f_operator" required class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm placeholder:text-outline transition-all" placeholder="氏名を入力" type="text"/>
+          </div>
+          
+          <div class="space-y-2">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1 flex justify-between">説明書URL <a href="#" id="f_manual_link" class="hidden-view text-primary normal-case font-bold" target="_blank">開く <span class="material-symbols-outlined text-[12px] align-baseline">open_in_new</span></a></label>
+             <input id="f_manual_url" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm placeholder:text-outline transition-all text-sm" placeholder="https://..." type="url"/>
+          </div>
 
-        <div class="mb-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <label class="form-label small fw-bold text-muted mb-0">説明書URL</label>
-            <a href="#" id="f_manual_link" class="small d-none-custom" target="_blank"><i class="bi bi-box-arrow-up-right me-1"></i>開く</a>
-          </div>
-          <input type="url" class="form-control" id="f_manual_url" placeholder="https://...">
-        </div>
-        
-        <div class="mb-4">
-          <label class="form-label small fw-bold text-muted">備考・メモ</label>
-          <textarea class="form-control" id="f_note" rows="2"></textarea>
-        </div>
-
-        <!-- 画像アップロード (位置移動: 備考と担当者の間) -->
-        <div class="mb-4">
-          <label class="form-label small fw-bold text-muted">備品画像 (任意)</label>
-          <input type="file" class="form-control form-control-sm mb-2" id="f_image_file" accept="image/*" onchange="resizeAndPreviewImage(this, 'f_image')">
-          <div class="text-center bg-light border rounded p-2" style="min-height: 100px; display: flex; align-items: center; justify-content: center;">
-            <img id="f_image_preview" src="" style="max-height: 200px; max-width: 100%; display: none; border-radius: 8px;">
-            <span id="f_image_placeholder" class="text-muted small"><i class="bi bi-camera me-1"></i>画像未選択</span>
-          </div>
-          <input type="hidden" id="f_image_url">
-        </div>
-
-        <div class="bg-light p-3 rounded mb-4" id="operatorSection">
-          <label class="form-label small fw-bold text-dark">入力担当者名 <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" id="f_operator" placeholder="操作者の氏名を入力" required>
-        </div>
-
-        <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">資産・管理情報</h5>
-        <div class="row g-3 mb-3">
-          <div class="col-md-4 col-6">
-            <label class="form-label small fw-bold text-muted">購入日</label>
-            <input type="date" class="form-control" id="f_purchase_date">
-          </div>
-          <div class="col-md-4 col-6">
-            <label class="form-label small fw-bold text-muted">購入金額(円)</label>
-            <input type="number" class="form-control" id="f_price">
-          </div>
-          <div class="col-md-4 col-12">
-            <label class="form-label small fw-bold text-muted">耐用年数(年)</label>
-            <input type="number" class="form-control" id="f_useful_life">
-          </div>
-        </div>
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">購入業者</label>
-            <input type="text" class="form-control" id="f_vendor">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted">修理依頼先</label>
-            <input type="text" class="form-control" id="f_repair_vendor">
+          <div class="md:col-span-2 space-y-2">
+            <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">備考 / メモ</label>
+            <textarea id="f_note" rows="4" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm placeholder:text-outline transition-all resize-none text-sm" placeholder="特記事項があれば入力してください..."></textarea>
           </div>
         </div>
 
-        <div class="mb-3">
-          <label class="form-label small fw-bold text-muted">資産区分</label>
-          <select class="form-select" id="f_asset_class">
-            <option value="備品">備品</option>
-            <option value="固定資産（会計報告対象）">固定資産（会計報告対象）</option>
-          </select>
+        <h3 class="font-headline font-bold text-lg px-2 text-on-surface mt-8 border-b border-outline-variant/20 pb-2">資産情報</h3>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+           <div class="space-y-2">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">購入日</label>
+             <input id="f_purchase_date" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm" type="date"/>
+           </div>
+           <div class="space-y-2">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">金額(円)</label>
+             <input id="f_price" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm font-monospace" type="number"/>
+           </div>
+           <div class="space-y-2 col-span-2 md:col-span-1">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">耐用年数(年)</label>
+             <input id="f_useful_life" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm font-monospace" type="number"/>
+           </div>
+           
+           <div class="space-y-2 col-span-2 md:col-span-1">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">資産区分</label>
+             <div class="relative group">
+               <select id="f_asset_class" class="appearance-none w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 pr-10 text-on-surface shadow-sm cursor-pointer transition-all">
+                 <option value="備品">備品</option>
+                 <option value="固定資産（会計報告対象）">固定資産（会計報告対象）</option>
+               </select>
+               <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+             </div>
+           </div>
+           <div class="space-y-2 col-span-2 md:col-span-1">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">購入業者</label>
+             <input id="f_vendor" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm" type="text"/>
+           </div>
+           <div class="space-y-2 col-span-2 md:col-span-1">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">修理依頼先</label>
+             <input id="f_repair_vendor" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm" type="text"/>
+           </div>
         </div>
 
-
-        <!-- フォーム下部アクションボタン -->
-        <div class="d-grid gap-2 mt-4" id="formActions" style="display:none;">
-          <button type="submit" id="btnRegister" class="btn btn-primary btn-lg action-btn shadow-sm" style="display:none;">
-            <i class="bi bi-cloud-upload me-2"></i>台帳に追加する (新規)
-          </button>
-          <button type="button" id="btnUpdate" class="btn btn-success btn-lg action-btn shadow-sm" style="display:none;" onclick="saveAsset()">
-            <i class="bi bi-save me-2"></i>台帳を更新する
-          </button>
-        </div>
       </form>
+    </main>
 
-      <!-- 履歴セクション (既存データ用) -->
-      <div id="historySection" class="mt-5" style="display:none;">
-        <h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2"></i>メンテナンス履歴</h5>
-        <div class="bg-light p-3 rounded">
-          <div id="historyTimeline" class="timeline">
-            <!-- 履歴がJSで挿入される -->
-          </div>
-        </div>
+    <footer class="fixed bottom-0 left-0 w-full bg-white/85 backdrop-blur-2xl p-6 md:px-12 z-50 shadow-[0_-8px_24px_-4px_rgba(0,88,189,0.04)]" id="formActions">
+      <div class="max-w-2xl mx-auto flex gap-4">
+        <button type="button" onclick="closeForm()" class="flex-1 py-4 px-6 rounded-full bg-surface-container-high text-on-surface font-headline font-bold active:scale-95 duration-150 transition-all text-sm md:text-base">
+          キャンセル
+        </button>
+        <button type="submit" form="assetForm" id="btnRegister" class="flex-[2] py-4 px-6 rounded-full bg-gradient-to-br from-[#0058bd] to-[#2771df] text-white font-headline font-bold shadow-lg shadow-primary/20 active:scale-95 duration-150 transition-all flex items-center justify-center gap-2 text-sm md:text-base">
+          <span class="material-symbols-outlined text-[20px] fill-current">save</span>新規登録
+        </button>
+        <button type="button" id="btnUpdate" onclick="saveAsset()" class="hidden-view flex-[2] py-4 px-6 rounded-full bg-gradient-to-br from-[#0c855a] to-[#12a370] text-white font-headline font-bold shadow-lg shadow-[#12a370]/20 active:scale-95 duration-150 transition-all flex items-center justify-center gap-2 text-sm md:text-base">
+          <span class="material-symbols-outlined text-[20px] fill-current">update</span>更新・保存
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- REPORT MODAL (OVERLAY) -->
+  <div id="report-modal" class="fixed inset-0 z-[100] hidden-view bg-on-surface/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-surface rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col transform transition-all duration-300 scale-95 opacity-0" id="reportModalContent">
+      <div class="px-6 py-5 border-b border-outline-variant/20 flex justify-between items-center sticky top-0 bg-surface z-10">
+         <h2 class="font-headline font-extrabold text-xl text-on-surface">メンテナンス・移動報告</h2>
+         <button onclick="closeReportModal()" class="p-2 hover:bg-surface-container-high rounded-full transition-colors">
+            <span class="material-symbols-outlined text-outline-variant hover:text-on-surface">close</span>
+         </button>
+      </div>
+      
+      <div class="p-6">
+        <form id="reportForm" class="space-y-6">
+           <div class="space-y-2">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">報告種別 <span class="text-error">*</span></label>
+             <div class="relative group">
+               <select id="r_type" required class="appearance-none w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm cursor-pointer transition-all">
+                  <option value="点検">定期点検</option>
+                  <option value="移動">移動（場所変更）</option>
+                  <option value="修理">修理・不具合</option>
+                  <option value="棚卸">棚卸（所在確認）</option>
+                  <option value="廃棄">廃棄</option>
+                  <option value="その他">その他</option>
+               </select>
+               <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+             </div>
+           </div>
+           
+           <div class="space-y-2">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">現在の状態 <span class="text-error">*</span></label>
+             <div class="relative group">
+               <select id="r_status" required disabled class="appearance-none w-full bg-surface-container border-none ring-1 ring-outline-variant/20 rounded-xl px-4 py-4 text-on-surface shadow-sm cursor-not-allowed font-bold text-primary opacity-80">
+                  <option value="稼働中">✅ 稼働中</option>
+                  <option value="予備">📦 予備</option>
+                  <option value="故障中">⚠️ 故障中</option>
+                  <option value="廃棄待">🕒 廃棄待</option>
+                  <option value="廃棄済">🛑 廃棄済</option>
+               </select>
+               <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant opacity-50">lock</span>
+             </div>
+           </div>
+           
+           <div id="r_locationGroup" class="hidden-view space-y-4 p-5 bg-surface-container-low rounded-xl border border-outline-variant/20">
+             <div class="space-y-2">
+               <label class="block text-xs font-bold text-on-surface-variant/80 ml-1">新しい設置階</label>
+               <input id="r_floor" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-lg px-4 py-3 text-sm text-on-surface shadow-sm transition-all" type="text"/>
+             </div>
+             <div class="space-y-2">
+               <label class="block text-xs font-bold text-on-surface-variant/80 ml-1">新しい設置場所</label>
+               <input id="r_location" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-lg px-4 py-3 text-sm text-on-surface shadow-sm transition-all" type="text"/>
+             </div>
+           </div>
+
+           <div class="space-y-2">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">報告者 <span class="text-error">*</span></label>
+             <input id="r_operator" required class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm placeholder:text-outline transition-all" placeholder="氏名を入力" type="text"/>
+           </div>
+
+           <div class="space-y-2">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">報告メモ</label>
+             <textarea id="r_note" rows="3" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm placeholder:text-outline transition-all resize-none text-sm" placeholder="詳細を入力"></textarea>
+           </div>
+
+           <div class="space-y-2">
+             <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">添付画像 (任意)</label>
+             <div class="flex items-center gap-4">
+                <button type="button" onclick="document.getElementById('r_image_file').click()" class="bg-surface-container-low px-4 py-3 rounded-lg font-bold text-sm text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center gap-2 border border-outline-variant/30 active:scale-95 duration-150">
+                  <span class="material-symbols-outlined text-[18px]">add_photo_alternate</span>ファイル選択
+                </button>
+                <div id="r_image_placeholder" class="text-xs text-outline font-medium">選択されていません</div>
+                <img id="r_image_preview" src="" class="h-12 w-12 object-cover rounded-md shadow-sm hidden-view">
+             </div>
+             <input type="file" id="r_image_file" accept="image/*" class="hidden" onchange="resizeAndPreviewImage(this, 'r_image')">
+             <input type="hidden" id="r_image_url">
+           </div>
+        </form>
+      </div>
+      <div class="px-6 py-5 bg-surface-bright rounded-b-3xl border-t border-outline-variant/10 flex justify-end">
+         <button type="button" onclick="submitReport()" class="w-full md:w-auto bg-gradient-to-br from-[#da8b23] to-[#e69830] hover:from-[#c27c1f] hover:to-[#da8b23] text-white font-headline font-extrabold text-[15px] px-8 py-4 rounded-full shadow-lg shadow-[#da8b23]/20 transition-all active:scale-95 flex justify-center items-center gap-2">
+            <span class="material-symbols-outlined fill-current text-[20px]">assignment_turned_in</span>報告を記録
+         </button>
       </div>
     </div>
   </div>
 
-
-  <!-- 報告フォーム (モーダル) -->
-  <div class="modal fade" id="reportModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content" style="border-radius: 15px;">
-        <div class="modal-header border-0 pb-0">
-          <h5 class="modal-title fw-bold">メンテナンス・移動報告</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+  <!-- HISTORY DETAIL MODAL (OVERLAY) -->
+  <div id="history-modal" class="fixed inset-0 z-[110] hidden-view bg-on-surface/40 backdrop-blur-sm overflow-y-auto p-4">
+    <div class="flex min-h-full items-center justify-center">
+      <div class="bg-surface rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col transform transition-all duration-300 scale-95 opacity-0 relative" id="historyModalContent">
+        <!-- Close icon at top right -->
+        <button onclick="closeHistoryDetailModal()" class="absolute top-3 right-3 z-30 bg-black/30 hover:bg-black/50 text-white rounded-full p-1.5 leading-none transition-all active:scale-90 shadow-lg">
+           <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+        
+        <div id="hd_image_container" class="w-full max-h-[60vh] bg-surface-container-low hidden-view border-b border-outline-variant/10 overflow-hidden">
+           <img id="hd_image" class="w-full h-full object-contain">
         </div>
-        <div class="modal-body">
-          <form id="reportForm">
-            <div class="mb-3">
-              <label class="form-label small fw-bold">報告種別</label>
-              <select class="form-select" id="r_type" required>
-                <option value="点検">定期点検</option>
-                <option value="移動">移動（場所変更）</option>
-                <option value="修理">修理・不具合</option>
-                <option value="棚卸">棚卸（所在確認）</option>
-                <option value="廃棄">廃棄</option>
-                <option value="その他">その他</option>
-              </select>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label small fw-bold">現在の状態</label>
-              <select class="form-select" id="r_status" required>
-                <option value="稼働中">✅ 稼働中</option>
-                <option value="予備">📦 予備</option>
-                <option value="故障中">⚠️ 故障中</option>
-                <option value="廃棄待">🕒 廃棄待</option>
-                <option value="廃棄済">🛑 廃棄済</option>
-              </select>
-            </div>
-
-            <div id="r_locationGroup" style="display:none;">
-              <div class="row mb-3">
-                <div class="col-4"><label class="form-label small fw-bold">新しい設置階</label><input type="text" class="form-control" id="r_floor"></div>
-                <div class="col-8"><label class="form-label small fw-bold">新しい設置場所</label><input type="text" class="form-control" id="r_location"></div>
-              </div>
-            </div>
-
-
-
-            <div class="mb-3">
-              <label class="form-label small fw-bold">報告者 <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="r_operator" placeholder="操作者の氏名を入力" required>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label small fw-bold">報告メモ</label>
-              <textarea class="form-control" id="r_note" rows="2" placeholder="詳細を入力"></textarea>
-            </div>
-
-            <!-- 添付画像 (位置移動: 最下部) -->
-            <div class="mb-3">
-              <label class="form-label small fw-bold">添付画像 (任意)</label>
-              <input type="file" class="form-control form-control-sm mb-2" id="r_image_file" accept="image/*" onchange="resizeAndPreviewImage(this, 'r_image')">
-              <div class="text-center bg-light border rounded p-2" style="min-height: 80px; display: flex; align-items: center; justify-content: center;">
-                <img id="r_image_preview" src="" style="max-height: 150px; max-width: 100%; display: none; border-radius: 8px;">
-                <span id="r_image_placeholder" class="text-muted small"><i class="bi bi-camera me-1"></i>画像未選択</span>
-              </div>
-              <input type="hidden" id="r_image_url">
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer border-0 pt-0 d-grid">
-          <button type="button" class="btn btn-warning btn-lg action-btn text-dark font-weight-bold" onclick="submitReport()">報告を記録</button>
-        </div>
+      <div class="p-6 space-y-4">
+         <div class="flex justify-between items-start mb-2">
+           <h3 id="hd_type" class="font-headline font-extrabold text-xl text-primary">報告種別</h3>
+           <span id="hd_timestamp" class="text-xs font-bold text-on-surface-variant bg-surface-container-high px-2 py-1 rounded">2026/03/24 10:00</span>
+         </div>
+         
+         <div>
+           <span class="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest">報告者</span>
+           <p id="hd_operator" class="font-semibold text-sm text-on-surface">Operator Name</p>
+         </div>
+         
+         <div class="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/20 shadow-sm">
+           <span class="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest mb-1 block">メモ</span>
+           <p id="hd_note" class="text-sm text-on-surface whitespace-pre-wrap leading-relaxed">Notes detail</p>
+         </div>
+         
+         <button onclick="closeHistoryDetailModal()" class="w-full mt-4 bg-surface-container shadow-sm border border-outline-variant/10 hover:bg-surface-container-high text-on-surface font-headline font-bold px-4 py-3 rounded-xl transition-all active:scale-95">
+           閉じる
+         </button>
+      </div>
       </div>
     </div>
   </div>
 
-  <!-- 履歴詳細モーダル -->
-  <div class="modal fade" id="historyDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content" style="border-radius: 15px;">
-        <div class="modal-header border-0 pb-0">
-          <h5 class="modal-title fw-bold">報告詳細</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3 text-center" id="hd_image_container" style="display:none;">
-            <img id="hd_image" src="" style="max-height: 400px; max-width: 100%; border-radius: 8px; border: 1px solid #ddd;">
-          </div>
-          <table class="table table-sm table-borderless">
-            <tbody>
-              <tr><th style="width: 30%;" class="text-muted small">日時</th><td id="hd_timestamp" class="small fw-bold"></td></tr>
-              <tr><th class="text-muted small">報告種別</th><td id="hd_type" class="small fw-bold text-primary"></td></tr>
-              <tr><th class="text-muted small">担当者</th><td id="hd_operator" class="small fw-bold"></td></tr>
-              <tr><th class="text-muted small">メモ</th><td id="hd_note" class="small" style="white-space: pre-wrap;"></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="modal-footer border-0 pt-0">
-          <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">閉じる</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
+<script>
     // --- [ State Management ] ---
     let allAssets = [];
     let masterLists = {};
-    let currentMode = 'list'; // 'list', 'edit', 'new'
-    const reportModal = new bootstrap.Modal(document.getElementById('reportModal'));
-    const historyDetailModal = new bootstrap.Modal(document.getElementById('historyDetailModal'));
+    let currentMode = 'list'; // 'list', 'detail', 'new', 'edit'
 
-    // --- [ Start Up ] ---
     const appUrl = '<?= appUrl ?>';
     
+    // Setup Modal Functions
+    function showModalOverlay(modalId, contentId) {
+      document.body.style.overflow = 'hidden'; // 背景スクロール禁止
+      const modal = document.getElementById(modalId);
+      const content = document.getElementById(contentId);
+      modal.classList.remove('hidden-view');
+      // small delay for transition
+      setTimeout(() => {
+        content.classList.remove('scale-95', 'opacity-0');
+        content.classList.add('scale-100', 'opacity-100');
+      }, 10);
+    }
+    
+    function hideModalOverlay(modalId, contentId) {
+      document.body.style.overflow = ''; // スクロール解除
+      const modal = document.getElementById(modalId);
+      const content = document.getElementById(contentId);
+      content.classList.remove('scale-100', 'opacity-100');
+      content.classList.add('scale-95', 'opacity-0');
+      setTimeout(() => {
+        modal.classList.add('hidden-view');
+        // 他のモーダルが開いていないか確認して body スタイルをリセット（複数重なり考慮）
+        if(!document.querySelectorAll('.fixed:not(.hidden-view)').length) {
+            document.body.style.overflow = '';
+        }
+      }, 300);
+    }
+
+    function openReportModal() {
+      // 報告モーダル開く前の初期化
+      document.getElementById('r_status').value = document.getElementById('f_status').value || '稼働中';
+      document.getElementById('r_floor').value = document.getElementById('f_floor').value || '';
+      document.getElementById('r_location').value = document.getElementById('f_location').value || '';
+      document.getElementById('r_operator').value = localStorage.getItem('lastOperator') || '';
+      clearImagePreview('r_image');
+      showModalOverlay('report-modal', 'reportModalContent');
+    }
+    function closeReportModal() { hideModalOverlay('report-modal', 'reportModalContent'); }
+    
+    function closeHistoryDetailModal() { hideModalOverlay('history-modal', 'historyModalContent'); }
+
+    // --- [ Start Up ] ---
     window.onload = function() {
-      // Operator自動入力
       document.getElementById('f_operator').value = localStorage.getItem('lastOperator') || '';
       
-      // マスタデータ読み込み
       google.script.run
         .withSuccessHandler(function(lists) {
           masterLists = lists;
@@ -381,7 +621,6 @@
         })
         .getMasterLists();
 
-      // カテゴリマスタ読み込み
       google.script.run
         .withSuccessHandler(function(master) {
           window.categoryMaster = master;
@@ -393,20 +632,17 @@
         })
         .getCategoryMaster();
 
-      // バリデーション・イベント設定
       setupEventListeners();
       
       const token = '<?= token ?>';
       const idStr = '<?= id ?>';
       
       if (token || idStr) {
-        // 特定の備品データを読み込み、直接単票フォームへ
         showLoading();
         google.script.run
           .withSuccessHandler(function(asset) {
             if(!asset) {
               if (token) {
-                // トークンはあるが備品がない ＝ 空のQRコードからの新規登録
                 alert('未登録のQRコードです。新規登録画面を開きます。');
                 openNewForm(token);
               } else {
@@ -415,26 +651,22 @@
               hideLoading();
               return;
             }
-            populateForm(asset);
-            switchView('form');
-            currentMode = 'edit';
+            populateDetailView(asset);
+            switchView('detail');
             hideLoading();
           })
           .withFailureHandler(handleServerError)
           .getAssetData(token, idStr);
       } else {
-        // 指定が無い場合: 全件取得してリストビューへ
         fetchAllLists();
       }
     };
 
     function setupEventListeners() {
-      // 型番を半角大文字に自動変換（入力確定・フォーカス外れ時に実行）
       document.getElementById('f_model_number').addEventListener('blur', function() {
         this.value = this.value.toUpperCase().replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
       });
 
-      // 購入金額 10万以上で資産区分アラート
       document.getElementById('f_price').addEventListener('change', function() {
         if (parseInt(this.value) >= 100000) {
           alert('❗購入金額が10万円以上です。資産区分を「固定資産（会計報告対象）」に変更することを確認してください。');
@@ -442,12 +674,10 @@
         }
       });
 
-      // 設置フロアに連動して設置場所を絞り込む
       document.getElementById('f_floor').addEventListener('change', function() {
         const floor = this.value;
         const locDatalist = document.getElementById('locList');
         locDatalist.innerHTML = '';
-        
         const locOptions = masterLists['設置場所'] || masterLists['場所'] || [];
         locOptions.forEach(loc => {
           if (!floor || loc.includes(floor)) {
@@ -455,37 +685,33 @@
           }
         });
       });
+
+      document.getElementById('r_type').addEventListener('change', function() {
+        const group = document.getElementById('r_locationGroup');
+        group.classList.toggle('hidden-view', !(this.value === '移動' || this.value === '棚卸'));
+        if(this.value === '廃棄') document.getElementById('r_status').value = '廃棄済';
+      });
     }
 
     function populateMasterDatalists() {
-      // 設置フロア (SELECT)
       const floorSelect = document.getElementById('f_floor');
       const floorOptions = masterLists['設置フロア'] || masterLists['フロア'] || [];
       floorSelect.innerHTML = '<option value="">選択してください...</option>';
-      floorOptions.forEach(val => {
-        floorSelect.innerHTML += `<option value="${val}">${val}</option>`;
-      });
+      floorOptions.forEach(val => { floorSelect.innerHTML += `<option value="${val}">${val}</option>`; });
       if (window.pendingAssetFloor) {
-        floorSelect.value = window.pendingAssetFloor;
-        delete window.pendingAssetFloor;
+        floorSelect.value = window.pendingAssetFloor; delete window.pendingAssetFloor;
       }
 
-      // 設置場所 (DATALIST)
       const locList = document.getElementById('locList');
       locList.innerHTML = '';
       const locOptions = masterLists['設置場所'] || masterLists['場所'] || [];
-      locOptions.forEach(val => {
-        locList.innerHTML += `<option value="${val}">`;
-      });
+      locOptions.forEach(val => { locList.innerHTML += `<option value="${val}">`; });
       
-      // 報告種別 (SELECT)
       const reportOptions = masterLists['報告種別'] || [];
       if (reportOptions.length > 0) {
         const rTypeSelect = document.getElementById('r_type');
         rTypeSelect.innerHTML = '';
-        reportOptions.forEach(val => {
-          rTypeSelect.innerHTML += `<option value="${val}">${val}</option>`;
-        });
+        reportOptions.forEach(val => { rTypeSelect.innerHTML += `<option value="${val}">${val}</option>`; });
       }
     }
 
@@ -494,12 +720,9 @@
       const l1Select = document.getElementById('f_category_l1');
       l1Select.innerHTML = '<option value="">大分類を選択...</option>';
       if (!window.categoryMaster) return;
-
       Object.keys(window.categoryMaster).forEach(l1 => {
         const opt = document.createElement('option');
-        opt.value = l1;
-        opt.textContent = l1;
-        l1Select.appendChild(opt);
+        opt.value = l1; opt.textContent = l1; l1Select.appendChild(opt);
       });
     }
 
@@ -507,37 +730,26 @@
       const l1 = document.getElementById('f_category_l1').value;
       const l2Select = document.getElementById('f_category_l2');
       const hiddenCode = document.getElementById('f_category_code');
-      
       l2Select.innerHTML = '<option value="">中分類を選択...</option>';
       hiddenCode.value = '';
-
       if (l1 && window.categoryMaster[l1]) {
         l2Select.disabled = false;
         window.categoryMaster[l1].forEach(item => {
           const opt = document.createElement('option');
-          opt.value = item.code; // valueにコードを保持
-          opt.textContent = item.name;
-          l2Select.appendChild(opt);
+          opt.value = item.code; opt.textContent = item.name; l2Select.appendChild(opt);
         });
       } else {
         l2Select.disabled = true;
-        l2Select.innerHTML = '<option value="">先に大分類を選択...</option>';
       }
     }
 
     function onCategoryL2Change() {
-      const l2Code = document.getElementById('f_category_l2').value;
-      document.getElementById('f_category_code').value = l2Code;
+      document.getElementById('f_category_code').value = document.getElementById('f_category_l2').value;
     }
 
     function setCategoryByCode(code) {
       if (!code) return;
-      if (!window.categoryMaster) {
-        window.pendingAssetCode = code;
-        return;
-      }
-      
-      // コードから大分類・中分類を逆引き
+      if (!window.categoryMaster) { window.pendingAssetCode = code; return; }
       for (const [l1, items] of Object.entries(window.categoryMaster)) {
         const found = items.find(it => it.code === code);
         if (found) {
@@ -558,7 +770,7 @@
           allAssets = data;
           renderList(allAssets);
           if (targetIdToOpen) {
-            openEditFormFromList(targetIdToOpen);
+            openDetailViewFromList(targetIdToOpen);
           } else {
             switchView('list');
             hideLoading();
@@ -569,30 +781,24 @@
     }
 
     // --- [ View Routing ] ---
+    const VIEWS = ['list-view', 'detail-view', 'form-view'];
     function switchView(view) {
-      document.getElementById('list-view').classList.add('d-none-custom');
-      document.getElementById('form-view').classList.add('d-none-custom');
-      document.getElementById('error-alert').classList.add('d-none-custom');
-      
-      document.getElementById(view + '-view').classList.remove('d-none-custom');
+      VIEWS.forEach(v => document.getElementById(v).classList.add('hidden-view'));
+      document.getElementById(view + '-view').classList.remove('hidden-view');
+      document.getElementById('error-alert').classList.remove('show-alert');
+      window.scrollTo(0,0);
     }
 
-    // リストへ戻る
     function showList() {
-      // ?id や ?token がURLについている場合は、素のURL(appUrl)にリダイレクトさせる
-      if (window.location.search) {
-        window.top.location.href = appUrl;
-        return;
-      }
-      
-      if (allAssets.length === 0) {
-        fetchAllLists();
-      } else {
-        switchView('list');
-      }
+      if (window.location.search) { window.top.location.href = appUrl; return; }
+      if (allAssets.length === 0) fetchAllLists(); else switchView('list');
+    }
+    
+    function closeForm() {
+      if (currentMode === 'new') showList();
+      else if (currentMode === 'edit') switchView('detail');
     }
 
-    // 新規フォームを開く
     function openNewForm(providedToken = null) {
       currentMode = 'new';
       document.getElementById('assetForm').reset();
@@ -600,90 +806,147 @@
       
       if (providedToken) {
         document.getElementById('qrToken').value = providedToken;
-        document.getElementById('f_asset_tag').placeholder = 'スキャンしたQRコードと紐付けられます';
+        document.getElementById('f_asset_tag').placeholder = 'QRコード紐付け済';
       } else {
         document.getElementById('qrToken').value = '';
+        document.getElementById('f_asset_tag').placeholder = '自動採番';
       }
       
-      // 今日の日付セット
       const today = new Date();
       document.getElementById('f_purchase_date').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
       
-      // 表示切替
-      document.getElementById('formTitle').innerText = '新規備品登録';
+      document.getElementById('formTitle').innerText = '新規登録';
+      document.getElementById('formSubtitle').innerText = 'New Item Entry';
+      document.getElementById('formMainTitle').innerText = '新しい備品を台帳に追加する';
+      
       document.getElementById('statusHeader').style.display = 'none';
       document.getElementById('editActions').style.display = 'none';
-      document.getElementById('historySection').style.display = 'none';
       
       clearImagePreview('f_image');
       
-      document.getElementById('formActions').style.display = 'block';
-      document.getElementById('btnRegister').style.display = 'block';
-      document.getElementById('btnUpdate').style.display = 'none';
-      
-      document.getElementById('f_manual_link').classList.add('d-none-custom');
+      document.getElementById('btnRegister').classList.remove('hidden-view');
+      document.getElementById('btnUpdate').classList.add('hidden-view');
+      document.getElementById('f_manual_link').classList.add('hidden-view');
 
       switchView('form');
     }
-
-    // 既存データをフォームへ反映(編集モード)
-    function openEditFormFromList(id) {
+    
+    function openDetailViewFromList(id) {
       const asset = allAssets.find(a => String(a.id) === String(id));
-      if(!asset) {
-        hideLoading();
-        return;
-      }
+      if(!asset) { hideLoading(); return; }
       
-      // 履歴を取るため getAssetData を叩く (リストには履歴が含まれていない為)
       showLoading();
       google.script.run
         .withSuccessHandler(function(fullAsset) {
-          populateForm(fullAsset);
-          currentMode = 'edit';
-          switchView('form');
+          window.currentViewedAsset = fullAsset; // cache for edit mode
+          populateDetailView(fullAsset);
+          switchView('detail');
           hideLoading();
         })
         .withFailureHandler(handleServerError)
         .getAssetData(asset.qr_token);
     }
+    
+    function openEditForm() {
+       if(!window.currentViewedAsset) return;
+       populateEditForm(window.currentViewedAsset);
+       switchView('form');
+    }
 
-    function populateForm(asset) {
-      document.getElementById('formTitle').innerText = '台帳詳細・修正';
-      document.getElementById('statusHeader').style.display = 'flex';
-      document.getElementById('editActions').style.display = 'block';
-      document.getElementById('historySection').style.display = 'block';
+    function populateDetailView(asset) {
+       window.currentViewedAsset = asset;
+       document.getElementById('d_assetId').value = asset.id || '';
+       document.getElementById('d_qrToken').value = asset.qr_token || '';
+       
+       document.getElementById('d_name').innerText = asset.name || '名称未設定';
+       document.getElementById('d_asset_tag').innerText = `ID: ${asset.asset_tag || '未発行'}`;
+       document.getElementById('d_model').innerText = `Model: ${asset.model_number || '不明'}`;
+       document.getElementById('d_category').innerText = asset.category_code || 'カテゴリなし';
+       document.getElementById('d_class').innerText = asset.asset_class || '分類なし';
+       
+       const stBadge = document.getElementById('d_status_badge');
+       stBadge.innerText = asset.status || '不明';
+       stBadge.className = 'px-3 py-1 rounded-sm text-xs font-bold tracking-wider uppercase shadow-sm ';
+       if(asset.status === '稼働中') stBadge.classList.add('bg-primary-fixed', 'text-on-primary-fixed-variant');
+       else if(asset.status === '故障中') stBadge.classList.add('bg-error-container', 'text-on-error-container');
+       else stBadge.classList.add('bg-surface-variant', 'text-on-surface-variant');
+
+       const img = document.getElementById('d_image');
+       if(asset.image_url) { img.src = asset.image_url; }
+       else { img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23ccc' viewBox='0 0 24 24'%3E%3Cpath d='M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19ZM8.5 13.5L11 16.51L14.5 12L19 18H5L8.5 13.5Z'/%3E%3C/svg%3E"; }
+
+       document.getElementById('d_location').innerText = [asset.floor, asset.location].filter(Boolean).join(' ') || '未設定';
+       document.getElementById('d_purchase').innerText = `${formatToHtmlDate(asset.purchase_date) || '日付不明'} / ${asset.price ? asset.price+'円' : '金額不明'}`;
+       document.getElementById('d_life').innerText = asset.useful_life ? asset.useful_life+'年' : '未設定';
+       document.getElementById('d_vendors').innerText = [asset.vendor, asset.repair_vendor].filter(Boolean).join(' / ') || '未設定';
+       document.getElementById('d_note').innerText = asset.note || '特記事項なし';
+       
+       const mLink = document.getElementById('d_manual_link');
+       const mText = document.getElementById('d_manual_text');
+       if(asset.manual_url) {
+           mLink.href = asset.manual_url;
+           mLink.classList.remove('hidden-view');
+           mText.innerText = '閲覧可能です';
+       } else {
+           mLink.classList.add('hidden-view');
+           mText.innerText = '登録なし';
+       }
+
+       const tl = document.getElementById('d_timeline');
+       if(asset.history && asset.history.length > 0) {
+         window.currentAssetHistory = asset.history;
+         tl.innerHTML = '';
+         asset.history.forEach((h, idx) => {
+           let theHtml = `
+            <div class="relative pl-6 md:w-1/2 md:ml-auto md:pl-8 cursor-pointer group" onclick="showHistoryDetail(${idx})">
+              <div class="absolute left-[-5px] md:-left-2.5 top-1.5 w-3 h-3 rounded-full bg-primary ring-4 ring-primary-fixed z-10 group-hover:scale-125 transition-transform"></div>
+              <div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] group-hover:shadow-md transition-shadow border border-outline-variant/10">
+                <div class="flex justify-between items-start mb-1">
+                  <span class="font-headline font-bold text-primary group-hover:text-primary-container transition-colors">${h.type}</span>
+                  <span class="text-[10px] font-bold text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded">${h.timestamp}</span>
+                </div>
+                <p class="text-xs text-on-surface-variant font-medium line-clamp-2">${h.note || 'メモなし'}</p>
+                <div class="text-[10px] text-outline mt-2 text-right">報告: ${h.operator}</div>
+              </div>
+            </div>`;
+           tl.innerHTML += theHtml;
+         });
+       } else {
+         tl.innerHTML = '<p class="text-sm text-outline italic text-center py-4">履歴はありません</p>';
+       }
+    }
+
+    function populateEditForm(asset) {
+      currentMode = 'edit';
+      document.getElementById('formTitle').innerText = '修正・更新';
+      document.getElementById('formSubtitle').innerText = 'Edit Item Entry';
+      document.getElementById('formMainTitle').innerHTML = `備品データの確認・修正 <span class="inline-flex items-center text-sm font-monospace text-on-surface-variant ml-3 bg-surface-container-high px-3 py-1 rounded-full border border-outline-variant/30 font-bold align-text-bottom shadow-sm">ID: ${asset.asset_tag || asset.id || '---'}</span>`;
       
-      document.getElementById('formActions').style.display = 'block';
-      document.getElementById('btnRegister').style.display = 'none';
-      document.getElementById('btnUpdate').style.display = 'block';
+      document.getElementById('statusHeader').style.display = 'block';
+      document.getElementById('editActions').style.display = 'flex';
+      
+      document.getElementById('btnRegister').classList.add('hidden-view');
+      document.getElementById('btnUpdate').classList.remove('hidden-view');
 
-      // hidden
       document.getElementById('assetId').value = asset.id || '';
       document.getElementById('qrToken').value = asset.qr_token || '';
 
-      // operator (入力担当者)
       document.getElementById('f_operator').value = asset.input_operator || localStorage.getItem('lastOperator') || '';
-
-      // values
       document.getElementById('f_status').value = asset.status || '稼働中';
       document.getElementById('f_name').value = asset.name || '';
       document.getElementById('f_asset_tag').value = asset.asset_tag || '';
       document.getElementById('f_model_number').value = asset.model_number || '';
       
-      // Image
       document.getElementById('f_image_url').value = asset.image_url || '';
       if(asset.image_url) {
         document.getElementById('f_image_preview').src = asset.image_url;
-        document.getElementById('f_image_preview').style.display = 'block';
-        const ph = document.getElementById('f_image_placeholder');
-        if (ph) ph.style.display = 'none';
+        document.getElementById('f_image_preview').classList.remove('hidden-view');
+        document.getElementById('f_image_placeholder').classList.add('hidden-view');
       } else {
         clearImagePreview('f_image');
       }
       
-      // 階層型カテゴリのセット
       setCategoryByCode(asset.category_code);
-
       document.getElementById('f_floor').value = asset.floor || '';
       window.pendingAssetFloor = asset.floor || '';
       document.getElementById('f_location').value = asset.location || '';
@@ -696,75 +959,87 @@
       document.getElementById('f_note').value = asset.note || '';
       document.getElementById('f_manual_url').value = asset.manual_url || '';
       
-      // link url
       const mLink = document.getElementById('f_manual_link');
       if(asset.manual_url) {
         mLink.href = asset.manual_url;
-        mLink.classList.remove('d-none-custom');
+        mLink.classList.remove('hidden-view');
       } else {
-        mLink.classList.add('d-none-custom');
+        mLink.classList.add('hidden-view');
       }
-      
-      // Timeline
-      const tl = document.getElementById('historyTimeline');
-      let hHtml = '';
-      if(asset.history && asset.history.length > 0) {
-        window.currentAssetHistory = asset.history; // モーダル表示用
-        asset.history.forEach((h, idx) => {
-          let imgHtml = h.image_url ? `<div class="mt-2"><img src="${h.image_url}" style="max-height: 100px; border-radius: 6px; border: 1px solid #ddd;"></div>` : '';
-          hHtml += `<div class="timeline-item" style="cursor: pointer;" onclick="showHistoryDetail(${idx})">
-            <div class="timeline-marker"></div>
-            <div class="small fw-bold text-primary">${h.timestamp} - ${h.type} <i class="bi bi-chevron-right float-end text-muted"></i></div>
-            <div class="small text-muted">${h.operator}${h.note? ' : '+h.note.substring(0,20)+(h.note.length>20?'...':''):''}</div>
-            ${imgHtml}
-          </div>`;
-        });
-      } else {
-        hHtml = '<div class="text-muted small">履歴はありません</div>';
-      }
-      tl.innerHTML = hHtml;
     }
-
 
     // --- [ List Rendering ] ---
     function renderList(assets) {
       const container = document.getElementById('listContainer');
       container.innerHTML = '';
       
+      // Update stats
+      let activeC = 0, faultC = 0, spareC = 0;
+      assets.forEach(a => {
+        if(a.status === '稼働中') activeC++;
+        else if(a.status === '故障中') faultC++;
+        else if(a.status === '予備') spareC++;
+      });
+      document.getElementById('statsContainer').innerHTML = `
+        <div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col items-center justify-center text-center shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-outline-variant/10">
+          <span class="text-[10px] font-label font-bold text-on-surface-variant tracking-widest uppercase mb-1">Total</span>
+          <span class="font-headline font-extrabold text-2xl text-primary">${assets.length}</span>
+        </div>
+        <div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col items-center justify-center text-center shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-outline-variant/10">
+          <span class="text-[10px] font-label font-bold text-on-surface-variant tracking-widest uppercase mb-1">Active</span>
+          <span class="font-headline font-extrabold text-2xl text-[#004494]">${activeC}</span>
+        </div>
+        <div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col items-center justify-center text-center shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-outline-variant/10">
+          <span class="text-[10px] font-label font-bold text-on-surface-variant tracking-widest uppercase mb-1">Faulty</span>
+          <span class="font-headline font-extrabold text-2xl text-error">${faultC}</span>
+        </div>
+        <div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col items-center justify-center text-center shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-outline-variant/10">
+          <span class="text-[10px] font-label font-bold text-on-surface-variant tracking-widest uppercase mb-1">Spare</span>
+          <span class="font-headline font-extrabold text-2xl text-[#da8b23]">${spareC}</span>
+        </div>
+      `;
+      
       if (assets.length === 0) {
-        document.getElementById('noResult').classList.remove('d-none-custom');
+        document.getElementById('noResult').classList.remove('hidden-view');
         return;
       }
-      document.getElementById('noResult').classList.add('d-none-custom');
+      document.getElementById('noResult').classList.add('hidden-view');
 
       assets.forEach(asset => {
-        const badgeClass = asset.status === '稼働中' ? 'bg-active' :
-                           asset.status === '故障中' ? 'bg-faulty' :
-                           asset.status === '予備' ? 'bg-spare' : 'bg-disposed';
+        const badgeClass = asset.status === '稼働中' ? 'bg-primary-fixed text-on-primary-fixed-variant' :
+                           asset.status === '故障中' ? 'bg-error-container text-on-error-container' :
+                           asset.status === '予備' ? 'bg-[#fcecc9] text-[#da8b23]' : 'bg-surface-variant text-on-surface-variant';
         const locationStr = [asset.floor, asset.location].filter(Boolean).join(' ') || '場所未設定';
-        // 管理番号の表示用（もし空なら型番を出す、等）
         const subTitle = asset.asset_tag || asset.model_number || '番号未設定';
+        const imgSrc = asset.image_url ? `<img src="${asset.image_url}" class="w-full h-full object-cover">` : `<span class="material-symbols-outlined text-outline-variant text-[28px]">image</span>`;
 
         const card = `
-          <div class="col-12 col-md-6 col-lg-4">
-            <a href="${appUrl}?id=${asset.id}" target="_top" class="text-decoration-none">
-              <div class="card asset-list-card p-3 h-100">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <span class="status-badge ${badgeClass}">${asset.status || '不明'}</span>
-                  <small class="text-muted text-truncate ms-2">${subTitle}</small>
+          <div onclick="openDetailViewFromList('${asset.id}')" class="group bg-surface-container-lowest rounded-2xl p-5 flex gap-5 items-center cursor-pointer hover:shadow-lg shadow-sm border border-outline-variant/10 transition-all active:scale-[0.98] duration-150">
+            <div class="relative w-20 h-20 md:w-24 md:h-24 flex-shrink-0 bg-surface-container-low border border-outline-variant/20 rounded-xl overflow-hidden flex justify-center items-center">
+              ${imgSrc}
+            </div>
+            <div class="flex-grow">
+              <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-1 h-full gap-2">
+                <div>
+                   <h2 class="font-headline font-bold text-lg text-on-surface leading-tight mb-1 group-hover:text-primary transition-colors">${asset.name || '名称未設定'}</h2>
+                   <p class="text-xs font-label text-on-surface-variant flex items-center gap-1 font-monospace">
+                     <span class="material-symbols-outlined text-[14px]">tag</span>${subTitle}
+                   </p>
                 </div>
-                <div class="d-flex align-items-center mb-2">
-                  ${asset.image_url ? `<img src="${asset.image_url}" class="me-3 shadow-sm border" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">` : `<div class="me-3 bg-light text-muted d-flex align-items-center justify-content-center border" style="width: 50px; height: 50px; border-radius: 8px;"><i class="bi bi-camera"></i></div>`}
-                  <div>
-                    <h5 class="fw-bold mb-1 text-dark">${asset.name || '名称未設定'}</h5>
-                    <div class="small text-muted"><i class="bi bi-tag text-secondary me-1"></i>${asset.category_code || '---'}</div>
-                  </div>
-                </div>
-                <div class="mt-auto pt-2 border-top small text-secondary">
-                  <div class="text-truncate"><i class="bi bi-geo-alt me-1"></i>${locationStr}</div>
+                <div class="flex items-center self-start gap-2 max-w-full">
+                  <span class="${badgeClass} px-2 py-0.5 rounded-sm text-[10px] font-extrabold tracking-widest flex-shrink-0">${asset.status || '不明'}</span>
                 </div>
               </div>
-            </a>
+              <div class="flex flex-wrap gap-2 mt-3">
+                <span class="bg-surface-container text-on-surface-variant px-3 py-1 rounded-full text-[10px] font-bold tracking-wider">${asset.category_code || '---'}</span>
+                <span class="bg-surface-container text-on-surface-variant px-3 py-1 rounded-full text-[10px] font-bold tracking-wider flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[12px]">location_on</span>${locationStr}
+                </span>
+              </div>
+            </div>
+            <div class="hidden md:flex self-center">
+              <span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors bg-surface-container-low p-2 rounded-full">chevron_right</span>
+            </div>
           </div>
         `;
         container.innerHTML += card;
@@ -778,20 +1053,18 @@
                (a.asset_tag && String(a.asset_tag).toLowerCase().includes(q)) ||
                (a.model_number && String(a.model_number).toLowerCase().includes(q)) ||
                (a.category_code && String(a.category_code).toLowerCase().includes(q)) ||
+               (a.floor && String(a.floor).toLowerCase().includes(q)) ||
                (a.location && String(a.location).toLowerCase().includes(q));
       });
       renderList(filtered);
     }
 
-
     // --- [ Actions Add/Update/Report ] ---
     
-    // 台帳に追加 (新規)
     document.getElementById('assetForm').addEventListener('submit', function(e) {
       e.preventDefault();
       const op = document.getElementById('f_operator').value;
       localStorage.setItem('lastOperator', op);
-
       const data = gatherFormData();
 
       if (currentMode === 'new') {
@@ -799,15 +1072,10 @@
         google.script.run
           .withSuccessHandler(function(res) {
             if(res.success) {
-              alert('新規台帳データを登録しました。画面を完了画面に遷移します。');
-              if (res.id) {
-                fetchAllLists(res.id);
-              } else {
-                window.top.location.href = appUrl; 
-              }
+              alert('新規台帳データを登録しました。');
+              if (res.id) fetchAllLists(res.id); else window.top.location.href = appUrl; 
             } else {
-              showError(res.error);
-              hideLoading();
+              showError(res.error); hideLoading();
             }
           })
           .withFailureHandler(handleServerError)
@@ -815,7 +1083,6 @@
       }
     });
 
-    // 台帳を保存 (編集)
     function saveAsset() {
       const form = document.getElementById('assetForm');
       if(!form.checkValidity()) { form.reportValidity(); return; }
@@ -829,12 +1096,10 @@
       google.script.run
         .withSuccessHandler(function(res) {
           if(res.success) {
-            alert('マスターデータを更新しました。');
-            // 更新したIDの詳細画面へ戻る
+            alert('データを更新しました。');
             fetchAllLists(data.id);
           } else {
-            showError(res.error);
-            hideLoading();
+            showError(res.error); hideLoading();
           }
         })
         .withFailureHandler(handleServerError)
@@ -863,22 +1128,6 @@
       };
     }
 
-    // --- Report Action ---
-    document.getElementById('r_type').addEventListener('change', function() {
-      const group = document.getElementById('r_locationGroup');
-      group.style.display = (this.value === '移動' || this.value === '棚卸') ? 'block' : 'none';
-      if(this.value === '廃棄') document.getElementById('r_status').value = '廃棄済';
-    });
-
-    function openReportModal() {
-      document.getElementById('r_status').value = document.getElementById('f_status').value;
-      document.getElementById('r_floor').value = document.getElementById('f_floor').value;
-      document.getElementById('r_location').value = document.getElementById('f_location').value;
-      document.getElementById('r_operator').value = localStorage.getItem('lastOperator') || '';
-      clearImagePreview('r_image');
-      reportModal.show();
-    }
-
     function showHistoryDetail(index) {
       if(!window.currentAssetHistory || !window.currentAssetHistory[index]) return;
       const h = window.currentAssetHistory[index];
@@ -892,24 +1141,24 @@
       const imgEl = document.getElementById('hd_image');
       if (h.image_url) {
         imgEl.src = h.image_url;
-        // ブートストラップ等の干渉を避けるため、インラインスタイルで強制的に表示する
-        imgContainer.setAttribute('style', 'display: block !important;');
-        imgEl.style.display = 'inline-block';
+        imgContainer.classList.remove('hidden-view');
       } else {
         imgEl.src = '';
-        imgContainer.setAttribute('style', 'display: none !important;');
+        imgContainer.classList.add('hidden-view');
       }
       
-      historyDetailModal.show();
+      showModalOverlay('history-modal', 'historyModalContent');
     }
 
     function submitReport() {
+      const form = document.getElementById('reportForm');
+      if(!form.checkValidity()) { form.reportValidity(); return; }
+
       const op = document.getElementById('r_operator').value;
-      if (!op) { alert('報告者名を入力してください。'); document.getElementById('r_operator').focus(); return; }
       localStorage.setItem('lastOperator', op);
 
       const payload = {
-        asset_id: document.getElementById('assetId').value,
+        asset_id: document.getElementById('assetId').value || document.getElementById('d_assetId').value,
         type: document.getElementById('r_type').value,
         status: document.getElementById('r_status').value,
         operator: op,
@@ -919,23 +1168,20 @@
         image_url: document.getElementById('r_image_url').value
       };
 
-      reportModal.hide();
+      closeReportModal();
       showLoading();
       google.script.run
         .withSuccessHandler(function(res) {
           if (res.success) {
             alert('レポートを記録しました。');
-            // データリストを再取得してから詳細・履歴画面を構築することで、最新履歴を必ず表示する
             fetchAllLists(payload.asset_id);
           } else {
-            showError(res.error);
-            hideLoading();
+            showError(res.error); hideLoading();
           }
         })
         .withFailureHandler(handleServerError)
         .registerReport(payload);
     }
-
 
     // --- [ Utilities ] ---
     function clearImagePreview(prefix) {
@@ -944,17 +1190,15 @@
       const urlInput = document.getElementById(prefix + '_url');
       if (urlInput) urlInput.value = '';
       const preview = document.getElementById(prefix + '_preview');
-      if (preview) { preview.src = ''; preview.style.display = 'none'; }
+      if (preview) { preview.src = ''; preview.classList.add('hidden-view'); }
       const ph = document.getElementById(prefix + '_placeholder');
-      if (ph) ph.style.display = 'block';
+      if (ph) ph.classList.remove('hidden-view');
     }
 
     function resizeAndPreviewImage(inputElement, prefix) {
       if (!inputElement.files || inputElement.files.length === 0) {
-        clearImagePreview(prefix);
-        return;
+        clearImagePreview(prefix); return;
       }
-      
       const file = inputElement.files[0];
       const reader = new FileReader();
       
@@ -962,58 +1206,50 @@
         const img = new Image();
         img.onload = function() {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 800;
-          let width = img.width;
-          let height = img.height;
+          const MAX_WIDTH = 800; const MAX_HEIGHT = 800;
+          let width = img.width; let height = img.height;
           
           if (width > height) {
             if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
           } else {
             if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
           }
-          
-          canvas.width = width;
-          canvas.height = height;
+          canvas.width = width; canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
           const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
           
-          // バックエンドへの送信は遅延させるため、URL用隠しフィールドにDataURLをそのまま格納する
           document.getElementById(prefix + '_url').value = dataUrl;
           document.getElementById(prefix + '_preview').src = dataUrl;
-          document.getElementById(prefix + '_preview').style.display = 'block';
+          document.getElementById(prefix + '_preview').classList.remove('hidden-view');
           const ph = document.getElementById(prefix + '_placeholder');
-          if (ph) ph.style.display = 'none';
+          if (ph) ph.classList.add('hidden-view');
         };
-        img.onerror = function() {
-          alert('画像ファイルの読み込みに失敗しました。');
-        };
+        img.onerror = function() { alert('画像ファイルの読み込みに失敗しました。'); };
         img.src = e.target.result;
       };
-      reader.onerror = function() {
-        alert('ファイルの読み込みに失敗しました。');
-      };
+      reader.onerror = function() { alert('ファイルの読み込みに失敗しました。'); };
       reader.readAsDataURL(file);
     }
 
     function formatToHtmlDate(dateStr) {
       if(!dateStr) return '';
-      // "yyyy/mm/dd hh:mm" -> "yyyy-mm-dd" for input type="date"
       return dateStr.split(' ')[0].replace(/\//g, '-');
     }
-    function showLoading() { document.getElementById('loading-view').classList.remove('d-none-custom'); }
-    function hideLoading() { document.getElementById('loading-view').classList.add('d-none-custom'); }
+    
+    function showLoading() { document.getElementById('loading-view').classList.remove('hidden-view'); }
+    function hideLoading() { document.getElementById('loading-view').classList.add('hidden-view'); }
     function showError(msg) {
       document.getElementById('error-message').innerText = msg;
-      document.getElementById('error-alert').classList.remove('d-none-custom');
-      window.scrollTo(0, 0);
+      document.getElementById('error-alert').classList.add('show-alert');
+      setTimeout(() => { document.getElementById('error-alert').classList.remove('show-alert'); }, 6000);
     }
     function handleServerError(err) {
       console.error(err);
       hideLoading();
       showError('サーバーと通信できませんでした: ' + err.message);
     }
-  </script>
+</script>
 </body>
 </html>
+

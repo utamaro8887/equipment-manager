@@ -1,16 +1,5 @@
 /**
  * システム設計仕様書に基づいた備品管理バックエンド
- * 2026/03/16 刷新
- * 2026/03/24 画像アップロード機能(uploadImage)およびimage_urlのマッピングを追加。認証用関数(setupPermissions)を追加。
- * 2026/03/24 画像の遅延アップロード（フォーム送信時に一括保存）およびサムネイルURL取得方式への変更。
- * 2026/03/24 報告フォーム送信後の無限ローディングバグを修正 (型安全なID比較)。
- * 2026/03/24 備品登録・台帳更新後にリスト画面ではなく、該当備品の詳細画面へ戻るよう挙動を変更。
- * 2026/03/24 台帳・報告画面の画像アップロード項目のレイアウト位置を調整。
- * 2026/03/24 メンテナンス履歴の項目クリック時に詳細画面（拡大画像含む）をポップアップ表示する機能を追加。
- * 2026/03/24 報告直後の履歴が即時反映されない問題に対応 (flushの追加とリロード手法変更)。
- * 2026/03/24 T_Historyのデータ取得時、シートのヘッダー名に依存せず確実に画像URLを取得するよう修正。
- * 2026/03/24 報告画面に「報告者」項目を独立して追加し、台帳の入力担当者と分離・リンクするよう修正。
- * 2026/03/24 未登録のQRトークン付きURLをスキャンした際、そのトークンで新規登録を開始する「空ラベル登録」ワークフローを実装。
  */
 
 const SPREADSHEET_ID = '1996BJT0IJoHYebMcoQaB0V6JNerrgnlyOCJOtUACT94';
@@ -170,8 +159,8 @@ function normalizeKeys(obj, type) {
       '報告日時': 'timestamp', '日時': 'timestamp', 'timestamp': 'timestamp',
       '対象備品ID': 'asset_id', '備品ID': 'asset_id', 'asset_id': 'asset_id',
       '報告種別': 'type', '種別': 'type', 'type': 'type',
-      '登録者名': 'operator', '担当者名': 'operator', '担当者': 'operator', 'operator': 'operator',
-      '画像URL': 'image_url', 'image_url': 'image_url',
+      '報告者': 'operator', '担当者名': 'operator', '担当者': 'operator', 'operator': 'operator',
+      '報告画像URL': 'image_url', '画像URL': 'image_url', 'image_url': 'image_url',
       '備考・メモ': 'note', '備考': 'note', 'note': 'note'
     }
   };
@@ -220,10 +209,9 @@ function getAssetList() {
 
 /**
  * 備品管理番号の自動生成
- * カテゴリコード + 購入年月(YYMM) + 連番 (-01)
- * すでに同一カテゴリ・年月の備品があれば連番をカウントアップする
+ * カテゴリコード + 購入年月(YYMM) + 連番 (IDを下桁に使用)
  */
-function generateAssetTag(categoryCode, purchaseDateString) {
+function generateAssetTag(categoryCode, purchaseDateString, assetId) {
   const code = categoryCode || 'XX';
   let datePart = '0000';
   
@@ -237,32 +225,9 @@ function generateAssetTag(categoryCode, purchaseDateString) {
   }
 
   const prefix = `${code}${datePart}-`;
+  const seqPart = assetId !== undefined ? String(assetId).padStart(4, '0') : '0000';
   
-  // 既存のシートから同じプレフィックスの最大連番を探す
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEETS.ASSETS);
-    const data = sheet.getDataRange().getValues();
-    const tagIdx = data[0].indexOf('備品管理番号');
-    if (tagIdx === -1) return `${prefix}01`;
-
-    let maxSeq = 0;
-    for (let i = 1; i < data.length; i++) {
-      const tag = String(data[i][tagIdx]);
-      if (tag.startsWith(prefix)) {
-        const seqPart = tag.replace(prefix, '');
-        const seq = parseInt(seqPart, 10);
-        if (!isNaN(seq) && seq > maxSeq) {
-          maxSeq = seq;
-        }
-      }
-    }
-    const nextSeq = String(maxSeq + 1).padStart(2, '0');
-    return `${prefix}${nextSeq}`;
-  } catch (e) {
-    console.warn('generateAssetTag sequence error:', e);
-    return `${prefix}01`;
-  }
+  return `${prefix}${seqPart}`;
 }
 
 /**
@@ -311,7 +276,7 @@ function registerNewAsset(data) {
     };
     
     // 備品管理番号を自動計算
-    data.asset_tag = generateAssetTag(data.category_code, data.purchase_date);
+    data.asset_tag = generateAssetTag(data.category_code, data.purchase_date, newId);
     
     // 画像データ(DataURL)が含まれていればGoogle Driveにアップロード
     if (data.image_url && String(data.image_url).startsWith('data:image')) {
@@ -319,7 +284,7 @@ function registerNewAsset(data) {
       if (uploadRes.success) {
         data.image_url = uploadRes.url;
       } else {
-        data.image_url = ''; // アップロード失敗時は空にする
+        return { success: false, error: '画像のアップロードに失敗しました: ' + uploadRes.error };
       }
     }
     
@@ -352,7 +317,7 @@ function registerNewAsset(data) {
     ]);
     
     SpreadsheetApp.flush(); // 即時反映
-    return { success: true, token: newToken };
+    return { success: true, token: newToken, id: newId };
   } catch (e) {
     console.error('registerNewAsset Error:', e);
     return { success: false, error: e.toString() };
@@ -416,6 +381,8 @@ function updateAsset(data) {
       const uploadRes = uploadImage(data.image_url, (data.asset_tag || data.id) + "_image.jpg");
       if (uploadRes.success) {
         data.image_url = uploadRes.url;
+      } else {
+        return { success: false, error: '画像のアップロードに失敗しました: ' + uploadRes.error };
       }
     }
 
@@ -659,9 +626,9 @@ function uploadImage(dataURI, filename) {
       console.warn("Sharing setting failed on file:", shareErr);
     }
     
-    // 表示用URLの取得 (確実に表示させるためのthumbnailエンドポイントを利用)
+    // 表示用URLの取得 (サードパーティCookieブロックを回避しやすい lh3.googleusercontent.com を利用)
     const id = file.getId();
-    const viewUrl = "https://drive.google.com/thumbnail?id=" + id + "&sz=w800";
+    const viewUrl = "https://lh3.googleusercontent.com/d/" + id;
     
     return { success: true, url: viewUrl, id: id };
   } catch(e) {
