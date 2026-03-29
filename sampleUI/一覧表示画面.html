@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+
+<html lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Inventory List - Precision Curator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-high": "#e7e8e9",
+              "secondary-fixed-dim": "#c7c6ca",
+              "on-secondary-fixed-variant": "#46474a",
+              "primary-fixed-dim": "#adc6ff",
+              "primary": "#0058bd",
+              "on-secondary": "#ffffff",
+              "on-surface": "#191c1d",
+              "primary-container": "#2771df",
+              "on-tertiary-fixed-variant": "#41474f",
+              "surface-tint": "#005ac1",
+              "on-surface-variant": "#424753",
+              "surface-dim": "#d9dadb",
+              "inverse-primary": "#adc6ff",
+              "outline-variant": "#c2c6d5",
+              "on-tertiary-fixed": "#161c23",
+              "surface-bright": "#f8f9fa",
+              "on-tertiary-container": "#fdfcff",
+              "on-primary": "#ffffff",
+              "on-primary-container": "#fefcff",
+              "surface-variant": "#e1e3e4",
+              "on-primary-fixed-variant": "#004494",
+              "tertiary-container": "#6f757e",
+              "tertiary-fixed-dim": "#c1c7d1",
+              "on-error-container": "#93000a",
+              "on-secondary-fixed": "#1a1b1e",
+              "surface-container-highest": "#e1e3e4",
+              "inverse-surface": "#2e3132",
+              "background": "#f8f9fa",
+              "tertiary": "#565d65",
+              "error-container": "#ffdad6",
+              "on-secondary-container": "#646468",
+              "on-error": "#ffffff",
+              "secondary": "#5e5e62",
+              "surface": "#f8f9fa",
+              "surface-container": "#edeeef",
+              "on-background": "#191c1d",
+              "on-primary-fixed": "#001a41",
+              "tertiary-fixed": "#dde3ed",
+              "surface-container-lowest": "#ffffff",
+              "outline": "#727785",
+              "secondary-container": "#e3e2e6",
+              "surface-container-low": "#f3f4f5",
+              "on-tertiary": "#ffffff",
+              "inverse-on-surface": "#f0f1f2",
+              "error": "#ba1a1a",
+              "secondary-fixed": "#e3e2e6",
+              "primary-fixed": "#d8e2ff"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #f8f9fa;
+            color: #191c1d;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 bg-white/85 backdrop-blur-2xl shadow-[0_12px_32px_-4px_rgba(0,88,189,0.06)]">
+<div class="flex items-center justify-between px-6 py-4 max-w-full">
+<div class="flex items-center gap-4">
+<button class="text-[#424753] hover:bg-[#f3f4f5] rounded-full transition-all active:scale-95 duration-200 ease-in-out p-2">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-['Plus_Jakarta_Sans'] font-bold text-lg tracking-tight text-[#191c1d]">Inventory</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="text-[#424753] hover:bg-[#f3f4f5] rounded-full transition-all active:scale-95 duration-200 ease-in-out p-2">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-4xl mx-auto">
+<!-- Search Anchor Section -->
+<section class="mb-10">
+<div class="relative w-full">
+<div class="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant/60" data-icon="search">search</span>
+</div>
+<input class="w-full bg-surface-container-lowest border-none rounded-full py-4 pl-14 pr-6 text-on-surface shadow-[0_12px_32px_-4px_rgba(0,88,189,0.06)] focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-on-surface-variant/40 font-body" placeholder="備品を検索..." type="text"/>
+</div>
+</section>
+<!-- Stats Bento Row (Custom) -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col items-center justify-center text-center shadow-sm">
+<span class="text-xs font-label text-on-surface-variant tracking-wider uppercase mb-1">Total</span>
+<span class="font-headline font-extrabold text-2xl text-primary">1,248</span>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col items-center justify-center text-center shadow-sm">
+<span class="text-xs font-label text-on-surface-variant tracking-wider uppercase mb-1">Active</span>
+<span class="font-headline font-extrabold text-2xl text-[#004494]">1,192</span>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col items-center justify-center text-center shadow-sm">
+<span class="text-xs font-label text-on-surface-variant tracking-wider uppercase mb-1">Issues</span>
+<span class="font-headline font-extrabold text-2xl text-error">12</span>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col items-center justify-center text-center shadow-sm">
+<span class="text-xs font-label text-on-surface-variant tracking-wider uppercase mb-1">New</span>
+<span class="font-headline font-extrabold text-2xl text-tertiary">44</span>
+</div>
+</div>
+<!-- Inventory List -->
+<div class="space-y-6">
+<!-- Item Card 1 -->
+<div class="group bg-surface-container-lowest rounded-xl p-5 flex gap-5 items-start cursor-pointer hover:shadow-md transition-all active:scale-[0.99] duration-150">
+<div class="relative w-24 h-24 flex-shrink-0 bg-surface-variant rounded-lg overflow-hidden">
+<img alt="PC Item" class="w-full h-full object-cover" data-alt="Modern silver laptop on a clean white desk with soft natural sunlight and minimalist professional aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrLwHRN3A5Waypt3Qc2uedqivGETR3PRmr-2DaYRu-5iI-o8NXUlLekuOKq8aHfyCwFxM739h_hfcfUtRMnc4pZZ_mG1T50Za-YdIdMxmMaGOWke4qdVtgtYOuE1IANgdnAjASEoiiPLCviX1fYyZY-lQrC2vRkFMulhGJlh-wnK-f4rJ89cUp5OA53o4h9qPhJ5sWwOKf-_kcpfPFyVtYeKzIrnJmsbUXa-o52TKQ9tDq_ByWPYEd3RMtoR5HC7rh51KczxQ6WYs"/>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-1">
+<h2 class="font-headline font-bold text-lg text-on-surface leading-tight">電子カルテ用PC</h2>
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-2 py-0.5 rounded-sm text-[10px] font-bold tracking-wide">稼働中</span>
+</div>
+<p class="text-xs font-label text-on-surface-variant mb-3 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="fingerprint">fingerprint</span>
+                        PC2603-02
+                    </p>
+<div class="flex flex-wrap gap-2 mt-auto">
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-[11px] font-medium">PC/IT機器</span>
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-[11px] font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="location_on">location_on</span>
+                            5階 詰所付近
+                        </span>
+</div>
+</div>
+<div class="self-center">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+<!-- Item Card 2 -->
+<div class="group bg-surface-container-lowest rounded-xl p-5 flex gap-5 items-start cursor-pointer hover:shadow-md transition-all active:scale-[0.99] duration-150">
+<div class="relative w-24 h-24 flex-shrink-0 bg-surface-variant rounded-lg overflow-hidden flex items-center justify-center">
+<img alt="Medical Device" class="w-full h-full object-cover" data-alt="Professional medical vital signs monitor in a sterile hospital setting with blue-toned cool lighting and clear display" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkNjh7hKOa0kS6ikee6-yMJmwUDiuMJxv5L8el-jK3zSFFRWc8DLE7n857ZN7LPac0AdQuheN_t52VC23NQVOpJ94y1TVmK5UEnzQqh3QID679GDARnRMTCMoD3lyctCd5ZZ4hWdVNmc0p0ezy49E67rTYeZ6rMy01RA8xQGT0FFxV0MyXYEvKkXIqIVPLAj2IlGmxTQQawyqP_rYD1RFUCRQROb9uLq5pSH6GZjCqW94x_54keccH81MV2XJdCXTXI7pgP4Jsrqw"/>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-1">
+<h2 class="font-headline font-bold text-lg text-on-surface leading-tight">生体情報モニタ</h2>
+<span class="bg-error-container text-on-error-container px-2 py-0.5 rounded-sm text-[10px] font-bold tracking-wide">故障中</span>
+</div>
+<p class="text-xs font-label text-on-surface-variant mb-3 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="fingerprint">fingerprint</span>
+                        MED-9942-X
+                    </p>
+<div class="flex flex-wrap gap-2 mt-auto">
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-[11px] font-medium">医療機器</span>
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-[11px] font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="location_on">location_on</span>
+                            3階 ME室
+                        </span>
+</div>
+</div>
+<div class="self-center">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+<!-- Item Card 3 -->
+<div class="group bg-surface-container-lowest rounded-xl p-5 flex gap-5 items-start cursor-pointer hover:shadow-md transition-all active:scale-[0.99] duration-150">
+<div class="relative w-24 h-24 flex-shrink-0 bg-surface-variant rounded-lg overflow-hidden flex items-center justify-center">
+<img alt="Furniture" class="w-full h-full object-cover" data-alt="Premium adjustable silver IV stand in a bright modern medical facility with clean lines and soft shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDN3K4z2Pahz-bSFW6ejQJn_a9Opb8V0SaEbrknIwde3lqCh6bfsNCYXhJM1RSFpEiEUbLqzuyzfgyPWWr9IaO5hSxkVIz8lW2rUCUYl7Xat2TwPnpKB8tDgGK4QGUL3jwIXjk66PPycwJsCMLUxHVnEBVQahNlTKLqBzjfN-YloCaY6x0Ch0zwLvcNGi_JemWKHz4MKY5OtiaHrJ_WncvTgqyCjLCjMKphhK_yAW-TLBRJ6Eo1f2z5vhRC_6FcPCk3VQCOhjntm7A"/>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-1">
+<h2 class="font-headline font-bold text-lg text-on-surface leading-tight">点滴スタンド</h2>
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-2 py-0.5 rounded-sm text-[10px] font-bold tracking-wide">稼働中</span>
+</div>
+<p class="text-xs font-label text-on-surface-variant mb-3 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="fingerprint">fingerprint</span>
+                        FUR-0012-B
+                    </p>
+<div class="flex flex-wrap gap-2 mt-auto">
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-[11px] font-medium">什器</span>
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-[11px] font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="location_on">location_on</span>
+                            一般病棟 A2
+                        </span>
+</div>
+</div>
+<div class="self-center">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+<!-- Item Card 4 -->
+<div class="group bg-surface-container-lowest rounded-xl p-5 flex gap-5 items-start cursor-pointer hover:shadow-md transition-all active:scale-[0.99] duration-150">
+<div class="relative w-24 h-24 flex-shrink-0 bg-surface-variant rounded-lg overflow-hidden flex items-center justify-center">
+<img alt="Office Supply" class="w-full h-full object-cover" data-alt="Professional laser printer in a modern corporate office setting with soft focus office background and high-key lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXkbX2PZ9suAJHp6fVpTIb6KvFC2xyN7ixqk8L2emAHIQYc8UP7qRh-7nQ6WV5Z_4F8PKekJtcgMKxFUVuJOXVW6HhRVSSusNJqhRXqRcJr-_fO_S-nzZ7VCeN4kfuNYqxOdBDL2NPKNHIU-S2iJwfM_zp1gWCj-Z5ufRO1IV75Boa8FWetkuPlQe11C__wpOJZ01W0ifN_FtIqNyX61YJmPO_eE0lIeOmi3wXPKVcFhTZvCE6uXySlvI5Gojz5Ap-sOX5FigGS0Q"/>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-1">
+<h2 class="font-headline font-bold text-lg text-on-surface leading-tight">カラーレーザープリンタ</h2>
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-2 py-0.5 rounded-sm text-[10px] font-bold tracking-wide">稼働中</span>
+</div>
+<p class="text-xs font-label text-on-surface-variant mb-3 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="fingerprint">fingerprint</span>
+                        PRT-2201-01
+                    </p>
+<div class="flex flex-wrap gap-2 mt-auto">
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-[11px] font-medium">事務用品</span>
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-[11px] font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="location_on">location_on</span>
+                            1階 総務課
+                        </span>
+</div>
+</div>
+<div class="self-center">
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button (FAB) -->
+<button class="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary shadow-lg flex items-center justify-center active:scale-90 transition-all duration-150 z-50">
+<span class="material-symbols-outlined text-[28px]" data-icon="add">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 rounded-t-3xl bg-white/85 backdrop-blur-2xl shadow-[0_-8px_24px_-4px_rgba(0,88,189,0.04)]">
+<div class="flex justify-around items-center w-full px-4 pt-3 pb-8">
+<a class="flex flex-col items-center justify-center bg-[#d8e2ff] text-[#004494] rounded-2xl px-6 py-2 active:scale-90 duration-150 ease-out" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="font-['Inter'] font-medium text-[11px] uppercase tracking-wider">Inventory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#424753] px-6 py-2 hover:text-[#0058bd] transition-colors active:scale-90 duration-150 ease-out" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="qr_code_scanner">qr_code_scanner</span>
+<span class="font-['Inter'] font-medium text-[11px] uppercase tracking-wider">Scan</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#424753] px-6 py-2 hover:text-[#0058bd] transition-colors active:scale-90 duration-150 ease-out" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="settings">settings</span>
+<span class="font-['Inter'] font-medium text-[11px] uppercase tracking-wider">Settings</span>
+</a>
+</div>
+</nav>
+</body></html>

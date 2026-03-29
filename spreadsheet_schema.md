@@ -13,8 +13,8 @@
 | F | 状態 | `status` | 稼働中\|予備\|故障中\|廃棄待\|廃棄済 |
 | G | 設置フロア | `floor` | 物理位置（大分類） |
 | H | 設置場所 | `location` | 物理位置（小分類） |
-| I | 資産区分 | `asset_class` | 備品\|固定資産（会計報告対象） |
-| J | QRアクセスキー | `qr_token` | **Unique Token** (ログイン不要アクセス用) |
+| I | メーカー | `manufacturer` | **Manufacturer Name** (追加分・QRアクセスキー跡地) |
+| J | 資産区分 | `asset_class` | 備品\|固定資産（会計報告対象） |
 | K | 購入年月日 | `purchase_date` | 備品を導入した日 |
 | L | 購入金額 | `price` | 備品を導入した金額 |
 | M | 説明書リンク | `manual_url` | 取扱説明書(PDF)等のURL |

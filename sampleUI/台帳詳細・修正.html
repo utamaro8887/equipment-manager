@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+
+<html lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-high": "#e7e8e9",
+              "secondary-fixed-dim": "#c7c6ca",
+              "on-secondary-fixed-variant": "#46474a",
+              "primary-fixed-dim": "#adc6ff",
+              "primary": "#0058bd",
+              "on-secondary": "#ffffff",
+              "on-surface": "#191c1d",
+              "primary-container": "#2771df",
+              "on-tertiary-fixed-variant": "#41474f",
+              "surface-tint": "#005ac1",
+              "on-surface-variant": "#424753",
+              "surface-dim": "#d9dadb",
+              "inverse-primary": "#adc6ff",
+              "outline-variant": "#c2c6d5",
+              "on-tertiary-fixed": "#161c23",
+              "surface-bright": "#f8f9fa",
+              "on-tertiary-container": "#fdfcff",
+              "on-primary": "#ffffff",
+              "on-primary-container": "#fefcff",
+              "surface-variant": "#e1e3e4",
+              "on-primary-fixed-variant": "#004494",
+              "tertiary-container": "#6f757e",
+              "tertiary-fixed-dim": "#c1c7d1",
+              "on-error-container": "#93000a",
+              "on-secondary-fixed": "#1a1b1e",
+              "surface-container-highest": "#e1e3e4",
+              "inverse-surface": "#2e3132",
+              "background": "#f8f9fa",
+              "tertiary": "#565d65",
+              "error-container": "#ffdad6",
+              "on-secondary-container": "#646468",
+              "on-error": "#ffffff",
+              "secondary": "#5e5e62",
+              "surface": "#f8f9fa",
+              "surface-container": "#edeeef",
+              "on-background": "#191c1d",
+              "on-primary-fixed": "#001a41",
+              "tertiary-fixed": "#dde3ed",
+              "surface-container-lowest": "#ffffff",
+              "outline": "#727785",
+              "secondary-container": "#e3e2e6",
+              "surface-container-low": "#f3f4f5",
+              "on-tertiary": "#ffffff",
+              "inverse-on-surface": "#f0f1f2",
+              "error": "#ba1a1a",
+              "secondary-fixed": "#e3e2e6",
+              "primary-fixed": "#d8e2ff"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .header-font {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 bg-white/85 backdrop-blur-2xl shadow-[0_12px_32px_-4px_rgba(0,88,189,0.06)] flex items-center justify-between px-6 py-4">
+<div class="flex items-center gap-4">
+<button class="hover:bg-[#f3f4f5] rounded-full transition-all p-2 active:scale-95 duration-200">
+<span class="material-symbols-outlined text-[#0058bd]">arrow_back</span>
+</button>
+<h1 class="font-['Plus_Jakarta_Sans'] font-bold text-lg tracking-tight text-[#191c1d]">Inventory Detail</h1>
+</div>
+<button class="hover:bg-[#f3f4f5] rounded-full transition-all px-4 py-2 active:scale-95 duration-200 text-[#0058bd] font-headline font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">edit</span>
+<span>Edit</span>
+</button>
+</header>
+<main class="pt-20 px-4 md:px-0 max-w-2xl mx-auto space-y-6">
+<!-- Hero Section: Main Photo -->
+<section class="relative aspect-square md:aspect-video w-full rounded-xl overflow-hidden shadow-sm bg-surface-container-low">
+<img alt="High-end professional laptop on a clean white desk" class="w-full h-full object-cover" data-alt="Close-up of a premium sleek silver laptop on a minimalist white desk with soft daylight coming from a window" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDE4p1D80LpX6Z7NkIr3-97WjUIYoMC5lbOdMMxFKMXVv5DiS-Vf8EOeZBoE8BGeX1ydHqFQJS5ygKCjgyqJX7-QVGNZw_9hDOm29OrYxMXnZIiVkJ7GgcLJK-a6f_tCLdbl1wrJ8ZKZzcKR_IkY-pkyamA06Hk2rabN10_NKHVtF36zUIn1Ia8Nihvr9_pdYBxjFPsyMH3kDNrgTv788li2iLa0ZLzX-vzGioU2Ne7chaYeTf20aJqqCHLz7YalyrPjVQOVNBFoQM"/>
+<div class="absolute top-4 right-4">
+<span class="bg-[#d8e2ff] text-[#004494] px-3 py-1 rounded-sm text-xs font-semibold tracking-wider uppercase">In Use</span>
+</div>
+</section>
+<!-- Primary Information Card -->
+<section class="bg-surface-container-lowest p-6 rounded-xl space-y-2">
+<div class="flex justify-between items-start">
+<h2 class="font-headline font-extrabold text-2xl tracking-tight text-on-surface">MacBook Pro 16" M3 Max</h2>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-medium text-sm">
+<span class="material-symbols-outlined text-sm">fingerprint</span>
+<span>ID: INV-2024-0892</span>
+</div>
+</section>
+<!-- Details Grid (Editorial Asymmetry) -->
+<section class="space-y-4">
+<h3 class="font-headline font-bold text-lg px-2 text-on-surface">Item Properties</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Property Item -->
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1">
+<span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Category</span>
+<span class="text-on-surface font-semibold text-base">Computing / Laptop</span>
+</div>
+<!-- Property Item -->
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1">
+<span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Brand/Model</span>
+<span class="text-on-surface font-semibold text-base">Apple / A2991</span>
+</div>
+<!-- Property Item -->
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1">
+<span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Serial Number</span>
+<span class="text-on-surface font-semibold text-base">C02G99ZZMD6T</span>
+</div>
+<!-- Property Item -->
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1">
+<span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Location</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">location_on</span>
+<span class="text-on-surface font-semibold text-base">Tokyo HQ / Floor 4B</span>
+</div>
+</div>
+<!-- Property Item -->
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1">
+<span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Purchase Date</span>
+<span class="text-on-surface font-semibold text-base">Jan 15, 2024</span>
+</div>
+<!-- Property Item -->
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1">
+<span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Warranty Expiry</span>
+<span class="text-[#0058bd] font-semibold text-base">Jan 15, 2027</span>
+</div>
+</div>
+</section>
+<!-- Maintenance & Notes Section -->
+<section class="space-y-4">
+<h3 class="font-headline font-bold text-lg px-2 text-on-surface">Lifecycle &amp; Notes</h3>
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden">
+<div class="p-5 border-b border-surface-container-low flex justify-between items-center">
+<div>
+<span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Last Maintenance</span>
+<p class="text-on-surface font-semibold mt-1">Mar 22, 2024</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">history</span>
+</div>
+<div class="p-5">
+<span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Administrative Notes</span>
+<p class="text-on-surface-variant text-sm mt-3 leading-relaxed">
+                        Assigned to Creative Department (Design Lead). High-priority asset. Scheduled for cleaning and battery health check-up in September 2024.
+                    </p>
+</div>
+</div>
+</section>
+<!-- Action Button (Mobile Primary) -->
+<div class="md:hidden pt-4">
+<button class="w-full bg-gradient-to-br from-[#0058bd] to-[#2771df] text-white rounded-full py-4 px-6 font-headline font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 transition-all">
+<span class="material-symbols-outlined">qr_code_2</span>
+<span>Print Asset Tag</span>
+</button>
+</div>
+</main>
+<!-- BottomNavBar (Hidden on desktop via md:hidden handled by shell logic if needed, but per mandate we render if top-level or suppression rules allow) -->
+<!-- Suppression Logic: Detailed sub-page implies task-focused or departure. Hiding shell as per rules for "Details" screens. -->
+<!-- Using a contextual Floating Action Button instead for specific Detail actions if relevant -->
+<!-- FAB Suppressed on Details per "Contextual FAB Suppression" rule -->
+</body></html>

@@ -148,7 +148,6 @@
       
       <!-- Hidden IDs -->
       <input type="hidden" id="d_assetId">
-      <input type="hidden" id="d_qrToken">
       
       <!-- Hero Image Section -->
       <section class="relative aspect-square md:aspect-video w-full rounded-xl overflow-hidden shadow-sm bg-surface-container-low flex items-center justify-center border border-outline-variant/20">
@@ -184,7 +183,8 @@
           </div>
           
           <div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-outline-variant/10">
-            <span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">型番</span>
+            <span class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">メーカー / 型番</span>
+            <span id="d_manufacturer" class="text-on-surface font-semibold text-base mb-1">Manufacturer</span>
             <span id="d_model" class="text-on-surface font-semibold text-base">Model</span>
           </div>
 
@@ -286,7 +286,6 @@
 
       <form id="assetForm" class="space-y-10">
         <input type="hidden" id="assetId">
-        <input type="hidden" id="qrToken">
 
         <div class="flex flex-col md:flex-row gap-8 items-start">
           <div class="w-full md:w-1/3 aspect-square bg-surface-container-low rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 group cursor-pointer hover:border-primary/40 transition-colors overflow-hidden relative" onclick="document.getElementById('f_image_file').click()">
@@ -323,8 +322,8 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-surface-container-low rounded-3xl">
           <div class="space-y-2">
-            <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">管理番号</label>
-            <input id="f_asset_tag" disabled class="w-full bg-surface-container-lowest/50 border-none ring-1 ring-outline-variant/20 rounded-xl px-4 py-4 text-on-surface shadow-sm font-monospace text-sm" placeholder="自動採番" type="text"/>
+            <label class="block text-xs font-headline font-extrabold uppercase tracking-widest text-on-surface-variant/80 ml-1">メーカー</label>
+            <input id="f_manufacturer" class="w-full bg-surface-container-lowest border-none ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary/40 rounded-xl px-4 py-4 text-on-surface shadow-sm placeholder:text-outline transition-all" placeholder="例: トヨタ, テルモ等" type="text"/>
           </div>
           
           <div class="space-y-2">
@@ -614,53 +613,77 @@
     window.onload = function() {
       document.getElementById('f_operator').value = localStorage.getItem('lastOperator') || '';
       
-      google.script.run
-        .withSuccessHandler(function(lists) {
-          masterLists = lists;
-          populateMasterDatalists();
-        })
-        .getMasterLists();
-
-      google.script.run
-        .withSuccessHandler(function(master) {
-          window.categoryMaster = master;
-          populateCategoryL1();
-          if (window.pendingAssetCode) {
-            setCategoryByCode(window.pendingAssetCode);
-            delete window.pendingAssetCode;
-          }
-        })
-        .getCategoryMaster();
-
-      setupEventListeners();
-      
       const token = '<?= token ?>';
       const idStr = '<?= id ?>';
       
+      showLoading();
+      
       if (token || idStr) {
-        showLoading();
+        // 1段階目: 特定レコード＋マスタのみを高速取得
         google.script.run
-          .withSuccessHandler(function(asset) {
-            if(!asset) {
-              if (token) {
-                alert('未登録のQRコードです。新規登録画面を開きます。');
-                openNewForm(token);
-              } else {
-                showError('該当する備品が見つかりません。');
-              }
+          .withSuccessHandler(function(data) {
+            if (data.asset) {
+              allAssets = [data.asset];
+              masterLists = data.masterLists || {};
+              window.categoryMaster = data.categoryMaster || {};
+              
+              populateMasterDatalists();
+              populateCategoryL1();
+              populateDetailView(data.asset);
+              switchView('detail');
               hideLoading();
-              return;
+              
+              // 2段階目: 裏側で全てのデータを取得 (一覧に戻る時のため)
+              setTimeout(fetchFullListInBackground, 500);
+            } else {
+              fetchAllLists();
             }
-            populateDetailView(asset);
-            switchView('detail');
-            hideLoading();
           })
           .withFailureHandler(handleServerError)
-          .getAssetData(token, idStr);
+          .getSpecificAssetData(token, idStr);
       } else {
         fetchAllLists();
       }
+
+      setupEventListeners();
     };
+
+    function fetchFullListInBackground() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          allAssets = data.assets || [];
+          if (data.masterLists) masterLists = data.masterLists;
+          if (data.categoryMaster) window.categoryMaster = data.categoryMaster;
+        })
+        .getInitialData();
+    }
+
+    function refreshAssetData(token, id) {
+      google.script.run
+        .withSuccessHandler(function(asset) {
+          if (asset) {
+            updateLocalAsset(asset);
+            // 現在その詳細画面を開いている場合は表示を更新
+            if (currentMode === 'detail' && window.currentViewedAsset && String(window.currentViewedAsset.id) === String(asset.id)) {
+              populateDetailView(asset);
+            }
+          }
+        })
+        .getAssetData(token, id);
+    }
+
+    function updateLocalAsset(asset) {
+      const idx = allAssets.findIndex(a => String(a.id) === String(asset.id));
+      if (idx !== -1) {
+        allAssets[idx] = asset;
+      } else {
+        allAssets.push(asset);
+      }
+      // リスト表示中なら念のため再描画
+      if (!document.getElementById('list-view').classList.contains('hidden-view')) {
+        renderList(allAssets);
+      }
+    }
 
     function setupEventListeners() {
       document.getElementById('f_model_number').addEventListener('blur', function() {
@@ -767,7 +790,7 @@
       showLoading();
       google.script.run
         .withSuccessHandler(function(data) {
-          allAssets = data;
+          allAssets = data.assets || [];
           renderList(allAssets);
           if (targetIdToOpen) {
             openDetailViewFromList(targetIdToOpen);
@@ -777,7 +800,7 @@
           }
         })
         .withFailureHandler(handleServerError)
-        .getAssetList();
+        .getInitialData();
     }
 
     // --- [ View Routing ] ---
@@ -833,18 +856,41 @@
     
     function openDetailViewFromList(id) {
       const asset = allAssets.find(a => String(a.id) === String(id));
-      if(!asset) { hideLoading(); return; }
+      if(!asset) { 
+        showLoading();
+        fetchAndOpenAsset(null, id);
+        return; 
+      }
       
-      showLoading();
+      // キャッシュから即座に表示
+      window.currentViewedAsset = asset;
+      populateDetailView(asset);
+      switchView('detail');
+      
+      // 裏側で最新情報を取得（Stale-While-Revalidate）
+      refreshAssetData(asset.qr_token, asset.id);
+    }
+
+    function fetchAndOpenAsset(token, id) {
       google.script.run
         .withSuccessHandler(function(fullAsset) {
-          window.currentViewedAsset = fullAsset; // cache for edit mode
+          if(!fullAsset) {
+            if (token) {
+              alert('未登録のQRコードです。新規登録画面を開きます。');
+              openNewForm(token);
+            } else {
+              showError('該当する備品が見つかりません。');
+            }
+            hideLoading();
+            return;
+          }
+          updateLocalAsset(fullAsset);
           populateDetailView(fullAsset);
           switchView('detail');
           hideLoading();
         })
         .withFailureHandler(handleServerError)
-        .getAssetData(asset.qr_token);
+        .getAssetData(token, id);
     }
     
     function openEditForm() {
@@ -856,7 +902,6 @@
     function populateDetailView(asset) {
        window.currentViewedAsset = asset;
        document.getElementById('d_assetId').value = asset.id || '';
-       document.getElementById('d_qrToken').value = asset.qr_token || '';
        
        document.getElementById('d_name').innerText = asset.name || '名称未設定';
        document.getElementById('d_asset_tag').innerText = `ID: ${asset.asset_tag || '未発行'}`;
@@ -929,12 +974,11 @@
       document.getElementById('btnUpdate').classList.remove('hidden-view');
 
       document.getElementById('assetId').value = asset.id || '';
-      document.getElementById('qrToken').value = asset.qr_token || '';
 
       document.getElementById('f_operator').value = asset.input_operator || localStorage.getItem('lastOperator') || '';
       document.getElementById('f_status').value = asset.status || '稼働中';
       document.getElementById('f_name').value = asset.name || '';
-      document.getElementById('f_asset_tag').value = asset.asset_tag || '';
+      document.getElementById('f_manufacturer').value = asset.manufacturer || '';
       document.getElementById('f_model_number').value = asset.model_number || '';
       
       document.getElementById('f_image_url').value = asset.image_url || '';
@@ -1073,7 +1117,7 @@
           .withSuccessHandler(function(res) {
             if(res.success) {
               alert('新規台帳データを登録しました。');
-              if (res.id) fetchAllLists(res.id); else window.top.location.href = appUrl; 
+              fetchAndOpenAsset(res.token, res.id); 
             } else {
               showError(res.error); hideLoading();
             }
@@ -1097,7 +1141,9 @@
         .withSuccessHandler(function(res) {
           if(res.success) {
             alert('データを更新しました。');
-            fetchAllLists(data.id);
+            refreshAssetData(null, data.id);
+            switchView('detail');
+            hideLoading();
           } else {
             showError(res.error); hideLoading();
           }
@@ -1124,7 +1170,7 @@
         note: document.getElementById('f_note').value,
         operator: document.getElementById('f_operator').value,
         image_url: document.getElementById('f_image_url').value,
-        qr_token: document.getElementById('qrToken').value
+        manufacturer: document.getElementById('f_manufacturer').value
       };
     }
 
@@ -1174,7 +1220,8 @@
         .withSuccessHandler(function(res) {
           if (res.success) {
             alert('レポートを記録しました。');
-            fetchAllLists(payload.asset_id);
+            refreshAssetData(null, payload.asset_id);
+            hideLoading();
           } else {
             showError(res.error); hideLoading();
           }
